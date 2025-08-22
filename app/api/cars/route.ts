@@ -1,5 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cars } from "@/lib/data";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { z } from "zod";
+
+// Validation schema for car creation/update
+const carSchema = z.object({
+  make: z.string().min(1, "Make is required"),
+  model: z.string().min(1, "Model is required"),
+  year: z
+    .number()
+    .int()
+    .min(1900)
+    .max(new Date().getFullYear() + 1),
+  pricePerDay: z.number().positive("Price must be positive"),
+  location: z.string().min(1, "Location is required"),
+  description: z.string().min(1, "Description is required"),
+  imageUrl: z
+    .string()
+    .url()
+    .optional()
+    .or(z.literal(""))
+    .default("/placeholder.svg"),
+  available: z.boolean().optional().default(true),
+  features: z.array(z.string()).optional().default([]),
+});
 
 // GET /api/cars - Get all cars
 export async function GET(req: NextRequest) {
@@ -9,39 +33,161 @@ export async function GET(req: NextRequest) {
     const make = searchParams.get("make");
     const minPrice = searchParams.get("minPrice");
     const maxPrice = searchParams.get("maxPrice");
+    const available = searchParams.get("available");
+    const limit = searchParams.get("limit");
+    const offset = searchParams.get("offset");
 
-    let filteredCars = [...cars];
+    // Build where clause for filtering
+    const where: any = {};
 
-    // Filter by location if provided
     if (location) {
-      filteredCars = filteredCars.filter((car) =>
-        car.location.toLowerCase().includes(location.toLowerCase())
-      );
+      where.location = {
+        contains: location,
+        mode: "insensitive",
+      };
     }
 
-    // Filter by make if provided
     if (make) {
-      filteredCars = filteredCars.filter((car) =>
-        car.make.toLowerCase().includes(make.toLowerCase())
-      );
+      where.make = {
+        contains: make,
+        mode: "insensitive",
+      };
     }
 
-    // Filter by price range if provided
-    if (minPrice) {
-      const min = parseInt(minPrice);
-      filteredCars = filteredCars.filter((car) => car.pricePerDay >= min);
+    if (minPrice || maxPrice) {
+      where.pricePerDay = {};
+      if (minPrice) where.pricePerDay.gte = parseFloat(minPrice);
+      if (maxPrice) where.pricePerDay.lte = parseFloat(maxPrice);
     }
 
-    if (maxPrice) {
-      const max = parseInt(maxPrice);
-      filteredCars = filteredCars.filter((car) => car.pricePerDay <= max);
+    if (available !== null) {
+      where.available = available === "true";
     }
 
-    return NextResponse.json(filteredCars);
+    // Get total count for pagination
+    const totalCount = await prisma.car.count({ where });
+
+    // Build query options
+    const queryOptions: any = {
+      where,
+      orderBy: { createdAt: "desc" },
+    };
+
+    if (limit) {
+      queryOptions.take = parseInt(limit);
+    }
+
+    if (offset) {
+      queryOptions.skip = parseInt(offset);
+    }
+
+    const cars = await prisma.car.findMany(queryOptions);
+
+    // Parse features from JSON string
+    const carsWithFeatures = cars.map((car) => ({
+      ...car,
+      features: car.features ? JSON.parse(car.features) : [],
+    }));
+
+    return NextResponse.json({
+      cars: carsWithFeatures,
+      pagination: {
+        totalCount,
+        limit: limit ? parseInt(limit) : null,
+        offset: offset ? parseInt(offset) : 0,
+      },
+    });
   } catch (error) {
     console.error("Error fetching cars:", error);
     return NextResponse.json(
       { error: "Failed to fetch cars" },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/cars - Create new car (Admin only)
+export async function POST(req: NextRequest) {
+  try {
+    const session = await auth();
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    // Check if user has admin role
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: {
+        userRoles: {
+          include: {
+            role: {
+              include: {
+                rolePermissions: {
+                  include: {
+                    permission: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Check for cars:write permission or legacy admin role
+    const hasPermission =
+      user.role === "ADMIN" ||
+      user.userRoles.some((ur) =>
+        ur.role.rolePermissions.some(
+          (rp) =>
+            rp.permission.name === "cars:write" ||
+            rp.permission.name === "cars:admin"
+        )
+      );
+
+    if (!hasPermission) {
+      return NextResponse.json(
+        { error: "Insufficient permissions" },
+        { status: 403 }
+      );
+    }
+
+    const body = await req.json();
+    const validatedData = carSchema.parse(body);
+
+    const car = await prisma.car.create({
+      data: {
+        ...validatedData,
+        features: JSON.stringify(validatedData.features || []),
+      },
+    });
+
+    return NextResponse.json(
+      {
+        ...car,
+        features: validatedData.features || [],
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Validation failed", details: error.issues },
+        { status: 400 }
+      );
+    }
+
+    console.error("Error creating car:", error);
+    return NextResponse.json(
+      { error: "Failed to create car" },
       { status: 500 }
     );
   }

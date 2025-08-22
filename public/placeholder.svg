@@ -1,0 +1,46 @@
+<svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f3f4f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e5e7eb;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="300" fill="url(#bgGradient)"/>
+  
+  <!-- Car silhouette -->
+  <g transform="translate(50, 100)">
+    <!-- Car body -->
+    <path d="M0 50 L20 30 L80 30 L100 20 L200 20 L220 30 L280 30 L300 50 L300 80 L280 90 L20 90 L0 80 Z" 
+          fill="#9ca3af" stroke="#6b7280" stroke-width="1"/>
+    
+    <!-- Windows -->
+    <rect x="30" y="35" width="40" height="20" fill="#d1d5db" rx="2"/>
+    <rect x="110" y="25" width="80" height="20" fill="#d1d5db" rx="2"/>
+    <rect x="210" y="35" width="40" height="20" fill="#d1d5db" rx="2"/>
+    
+    <!-- Wheels -->
+    <circle cx="60" cy="85" r="15" fill="#374151" stroke="#1f2937" stroke-width="2"/>
+    <circle cx="240" cy="85" r="15" fill="#374151" stroke="#1f2937" stroke-width="2"/>
+    <circle cx="60" cy="85" r="8" fill="#6b7280"/>
+    <circle cx="240" cy="85" r="8" fill="#6b7280"/>
+    
+    <!-- Headlights -->
+    <ellipse cx="295" cy="60" rx="8" ry="5" fill="#fbbf24"/>
+    
+    <!-- Details -->
+    <rect x="120" y="60" width="60" height="3" fill="#6b7280" rx="1"/>
+    <rect x="75" y="50" width="25" height="2" fill="#6b7280" rx="1"/>
+    <rect x="200" y="50" width="25" height="2" fill="#6b7280" rx="1"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="200" y="180" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" 
+        font-size="16" font-weight="500" fill="#6b7280">Car Image</text>
+  <text x="200" y="200" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" 
+        font-size="12" fill="#9ca3af">Placeholder</text>
+  
+  <!-- Border -->
+  <rect x="1" y="1" width="398" height="298" fill="none" stroke="#d1d5db" stroke-width="2" rx="8"/>
+</svg>
