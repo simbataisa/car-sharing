@@ -18,14 +18,16 @@
 
 ### Background
 
-This is a modern car-sharing/rental application built with Next.js 15, designed to provide users with a seamless platform for browsing and booking rental cars. The application demonstrates modern React patterns and showcases a clean, responsive user interface.
+This is a modern car-sharing/rental application built with Next.js 15, designed to provide users with a comprehensive platform for browsing, booking, and managing rental cars. The application features full authentication, API integration, admin functionality, and demonstrates modern React patterns with a clean, responsive user interface.
 
 ### Core Problems Solved
 
-- **Digital Car Rental Platform**: Provides users with easy access to browse available rental cars
-- **User Authentication Interface**: Simplified login and signup functionality for user onboarding
+- **Digital Car Rental Platform**: Provides users with easy access to browse available rental cars through RESTful API
+- **User Authentication System**: Complete authentication flow with NextAuth v5 including login, signup, and session management
+- **Role-Based Access Control**: Admin dashboard with comprehensive user management capabilities
 - **Responsive Car Browsing**: Clean, mobile-friendly interface for car discovery and selection
-- **Booking Interface**: Basic booking form for date selection and reservation requests
+- **Booking Management**: Integrated booking system with API endpoints for reservation handling
+- **Admin Interface**: Full administrative dashboard for user management with advanced features
 
 ### Target Users
 
@@ -61,6 +63,21 @@ The application follows a **client-server architecture** using Next.js App Route
 - **React**: 19.1.0 (Latest version with concurrent features)
 - **TypeScript**: ^5 (Strong typing and enhanced developer experience)
 
+### Authentication & Database
+
+- **NextAuth.js**: ^5.0.0-beta.29 (Authentication framework with v5 features)
+- **Prisma**: ^6.14.0 (Database ORM with type safety)
+- **@auth/prisma-adapter**: ^2.10.0 (Prisma adapter for NextAuth)
+- **bcryptjs**: ^2.4.6 (Password hashing)
+- **@types/bcryptjs**: ^2.4.6 (TypeScript definitions)
+- **jsonwebtoken**: ^9.0.2 (JWT token handling)
+
+### Validation & Forms
+
+- **Zod**: ^3.0.0 (Schema validation)
+- **React Hook Form**: ^7.62.0 (Form state management)
+- **@hookform/resolvers**: ^5.2.1 (Form validation resolvers)
+
 ### Styling & UI
 
 - **Tailwind CSS**: ^4 (Utility-first CSS framework)
@@ -76,8 +93,10 @@ The application follows a **client-server architecture** using Next.js App Route
 - **PostCSS**: Tailwind CSS processing
 - **tw-animate-css**: ^1.3.7 (Animation utilities)
 
-### Utilities
+### State Management & Utilities
 
+- **Zustand**: ^5.0.0 (Lightweight state management)
+- **date-fns**: ^4.1.0 (Date manipulation utilities)
 - **clsx**: ^2.1.1 (Conditional class name utility)
 - **tailwind-merge**: ^3.3.1 (Tailwind class merging)
 
@@ -86,10 +105,24 @@ The application follows a **client-server architecture** using Next.js App Route
 ```
 car-sharing-app/
 ├── app/                          # Next.js App Router pages
+│   ├── admin/                    # Admin dashboard pages
+│   │   ├── login/                # Admin login page
+│   │   ├── users/                # User management interface
+│   │   └── page.tsx              # Admin dashboard overview
+│   ├── api/                      # API routes
+│   │   ├── admin/                # Admin API endpoints
+│   │   │   └── users/            # User management APIs
+│   │   ├── auth/                 # Authentication endpoints
+│   │   │   ├── [...nextauth]/    # NextAuth configuration
+│   │   │   └── register/         # User registration API
+│   │   ├── bookings/             # Booking management APIs
+│   │   └── cars/                 # Car data APIs
 │   ├── cars/                     # Car-related pages
 │   │   ├── [id]/                 # Dynamic car detail pages
 │   │   │   └── page.tsx          # Individual car details
 │   │   └── page.tsx              # Car listing page
+│   ├── dashboard/                # User dashboard
+│   │   └── page.tsx              # User booking history
 │   ├── login/                    # Authentication
 │   │   └── page.tsx              # Login form
 │   ├── signup/                   # User registration
@@ -102,12 +135,28 @@ car-sharing-app/
 │   │   ├── button.tsx            # Button component with variants
 │   │   ├── card.tsx              # Card component system
 │   │   ├── input.tsx             # Form input component
-│   │   └── label.tsx             # Form label component
+│   │   ├── label.tsx             # Form label component
+│   │   ├── alert.tsx             # Alert component
+│   │   ├── error-boundary.tsx    # Error handling components
+│   │   └── loading-spinner.tsx   # Loading state components
+│   ├── AdminLayout.tsx           # Admin dashboard layout
 │   ├── CarCard.tsx               # Car display card
-│   └── Navbar.tsx                # Navigation header
-├── lib/                          # Utilities and data
+│   ├── Navbar.tsx                # Navigation header
+│   └── Providers.tsx             # Context providers wrapper
+├── lib/                          # Utilities and configurations
+│   ├── admin-auth.ts             # Admin authentication middleware
+│   ├── auth.ts                   # NextAuth configuration
 │   ├── data.ts                   # Mock car data and interfaces
-│   └── utils.ts                  # Utility functions
+│   ├── prisma.ts                 # Prisma client configuration
+│   ├── store.ts                  # Zustand state management
+│   ├── utils.ts                  # Utility functions
+│   └── validations.ts            # Zod validation schemas
+├── middleware.ts                 # Next.js middleware for route protection
+├── prisma/                       # Database schema and migrations
+│   └── schema.prisma             # Prisma database schema
+├── scripts/                      # Utility scripts
+│   └── seed-admin.ts             # Admin user seeding script
+├── .env.local                    # Environment variables
 ├── package.json                  # Dependencies and scripts
 ├── next.config.ts                # Next.js configuration
 ├── tsconfig.json                 # TypeScript configuration
@@ -119,21 +168,47 @@ car-sharing-app/
 
 ### Current Features
 
-#### 1. Car Browsing System
+#### 1. Complete Authentication System
+
+- **User Registration**: Full signup flow with form validation and password hashing
+- **User Login**: Secure authentication with NextAuth v5 and JWT tokens
+- **Session Management**: Persistent user sessions with automatic token refresh
+- **Role-Based Access**: User and Admin role separation with protected routes
+- **Password Security**: bcrypt hashing for secure password storage
+
+#### 2. API Integration & Backend
+
+- **RESTful API**: Complete set of API endpoints following REST conventions
+- **Car Management**: GET endpoints for car listing and individual car details
+- **User Management**: Admin APIs for CRUD operations on user accounts
+- **Booking System**: API endpoints for creating and managing bookings
+- **Authentication APIs**: Registration, login, and session management endpoints
+- **Admin APIs**: Protected endpoints for administrative functions
+
+#### 3. Car Browsing System
 
 - **Homepage**: Hero section with featured cars (displays first 3 cars)
 - **Car Listing**: Complete car inventory page with grid layout
 - **Car Details**: Individual car pages with detailed information and booking form
 - **Responsive Design**: Mobile-first approach with responsive grid layouts
 
-#### 2. User Interface Components
+#### 4. Admin Dashboard & Management
+
+- **Admin Authentication**: Separate admin login with role verification
+- **User Management Interface**: Complete CRUD operations for user accounts
+- **User Analytics**: Dashboard with user statistics and recent activity
+- **Pagination & Filtering**: Advanced user list with search and filtering capabilities
+- **Bulk Operations**: Admin tools for managing multiple users efficiently
+- **Role Management**: Ability to promote users to admin status
+
+#### 5. User Interface Components
 
 - **Navigation**: Clean navigation bar with logo and authentication links
 - **Car Cards**: Reusable car display components with images, pricing, and details
 - **Forms**: Login and signup forms with proper form controls
 - **Buttons**: Variant-based button system (default, outline, ghost, etc.)
 
-#### 3. Styling System
+#### 6. Styling System
 
 - **Design System**: Custom Tailwind theme with light/dark mode support
 - **Component Variants**: Systematic approach to component styling variations
@@ -163,12 +238,68 @@ car-sharing-app/
 
 #### Authentication Pages
 
-- **Login** (`/login`): Email/password login form
-- **Signup** (`/signup`): User registration with name, email, password
+- **Login** (`/login`): Email/password login form with NextAuth integration
+- **Signup** (`/signup`): User registration with validation and password hashing
+- **Admin Login** (`/admin/login`): Separate admin authentication interface
+
+#### Admin Dashboard (`/admin`)
+
+- **Dashboard Overview**: Statistics and recent user activity
+- **User Management** (`/admin/users`): Complete user CRUD interface
+- **User Details**: Individual user management with booking history
+- **Role Management**: Admin promotion and user status control
+
+#### User Dashboard (`/dashboard`)
+
+- **Booking History**: User's past and upcoming reservations
+- **Profile Management**: User account settings and information
+- **Active Bookings**: Current reservation status and details
+
+### API Endpoints
+
+#### Authentication APIs
+
+- `GET/POST /api/auth/[...nextauth]` - NextAuth session management
+- `POST /api/auth/register` - User registration endpoint
+
+#### Car APIs
+
+- `GET /api/cars` - Fetch all cars with optional filtering
+- `GET /api/cars/[id]` - Fetch individual car details
+
+#### Booking APIs
+
+- `GET /api/bookings` - Fetch user's bookings (authenticated)
+- `POST /api/bookings` - Create new booking (authenticated)
+
+#### Admin APIs
+
+- `GET /api/admin/users` - Fetch all users (admin only)
+- `POST /api/admin/users` - Create new user (admin only)
+- `GET /api/admin/users/[id]` - Fetch user details (admin only)
+- `PUT /api/admin/users/[id]` - Update user (admin only)
+- `DELETE /api/admin/users/[id]` - Soft delete user (admin only)
 
 ## Components Documentation
 
 ### Core Components
+
+#### `<AdminLayout />`
+
+Admin dashboard layout component:
+
+- Role-based access control
+- Admin navigation sidebar
+- Session verification and redirects
+- Responsive admin interface
+
+#### `<Providers />`
+
+Context provider wrapper:
+
+- NextAuth SessionProvider integration
+- Global state management setup
+- Application-wide context distribution
 
 #### `<Navbar />`
 
@@ -216,6 +347,59 @@ Complete card component system:
 
 ## Data Models
 
+### User Interface
+
+```typescript
+interface User {
+  id: string; // Unique identifier
+  email: string; // User email address
+  name: string; // User display name
+  role: "USER" | "ADMIN"; // User role for access control
+  isActive: boolean; // Account status
+  password: string; // Hashed password
+  lastLogin?: Date; // Last login timestamp
+  createdAt: Date; // Account creation date
+  updatedAt: Date; // Last update timestamp
+}
+```
+
+### Booking Interface
+
+```typescript
+interface Booking {
+  id: string; // Unique identifier
+  userId: string; // User who made the booking
+  carId: number; // Car being booked
+  startDate: string; // Booking start date
+  endDate: string; // Booking end date
+  totalPrice: number; // Total booking cost
+  status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
+  createdAt: string; // Booking creation timestamp
+}
+```
+
+### Application State Interface
+
+```typescript
+interface AppState {
+  // User authentication state
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+
+  // Cars and booking state
+  cars: Car[];
+  filteredCars: Car[];
+  selectedCar: Car | null;
+  searchFilters: SearchFilters;
+
+  // UI state
+  isSidebarOpen: boolean;
+  theme: "light" | "dark";
+}
+```
+
 ### Car Interface
 
 ```typescript
@@ -259,8 +443,32 @@ cd car-sharing-app
 # Install dependencies
 npm install
 
+# Set up environment variables
+cp .env.example .env.local
+# Edit .env.local with your configuration
+
+# Initialize database (if using Prisma)
+npx prisma generate
+npx prisma db push
+
+# Seed admin user (optional)
+npm run seed-admin
+
 # Start development server
 npm run dev
+```
+
+### Environment Variables
+
+Create a `.env.local` file with the following variables:
+
+```env
+# NextAuth Configuration
+NEXTAUTH_SECRET=your-super-secret-jwt-secret-key
+NEXTAUTH_URL=http://localhost:3000
+
+# Database Configuration
+DATABASE_URL=file:./dev.db
 ```
 
 ### Available Scripts
@@ -272,6 +480,11 @@ npm run dev          # Start dev server with Turbopack
 # Production
 npm run build        # Build for production
 npm start           # Start production server
+
+# Database
+npx prisma generate  # Generate Prisma client
+npx prisma db push   # Push schema to database
+npm run seed-admin   # Create admin user
 
 # Code Quality
 npm run lint        # Run ESLint
@@ -285,25 +498,25 @@ npm run lint        # Run ESLint
 
 ## Current Limitations
 
-### Backend Integration
+### Database Integration
 
-- **No Database**: Cars data is hardcoded in `lib/data.ts`
-- **No API Routes**: No backend endpoints for data operations
-- **Static Authentication**: Login/signup forms are UI-only
+- **Mock Data**: Car data still uses static mock data in `lib/data.ts`
+- **Partial Database**: User authentication uses database, but cars/bookings are still mocked
+- **SQLite Usage**: Currently using SQLite for development (not production-ready)
 
 ### Functionality Gaps
 
-- **No Real Booking**: Booking form doesn't process reservations
-- **No Payment System**: No payment processing integration
-- **No User Management**: No user sessions or profile management
-- **No Search/Filtering**: Cannot filter cars by criteria
+- **Payment Integration**: No payment processing system implemented
+- **Real-time Features**: No real-time updates or notifications
+- **Advanced Search**: Limited filtering and search capabilities
+- **File Upload**: No image upload functionality for cars or users
 
 ### Technical Limitations
 
-- **No State Management**: No global state solution (Redux, Zustand, etc.)
-- **No Form Validation**: Forms lack validation and error handling
-- **No Loading States**: No loading indicators for async operations
-- **Limited Accessibility**: Missing ARIA labels and keyboard navigation
+- **Limited Testing**: No comprehensive test suite implemented
+- **Basic Error Handling**: Limited error boundaries and recovery mechanisms
+- **Performance Optimization**: No caching strategies or performance monitoring
+- **Limited Accessibility**: Missing ARIA labels and advanced keyboard navigation
 
 ### Content & Media
 
@@ -313,19 +526,22 @@ npm run lint        # Run ESLint
 
 ## Future Enhancements
 
-### Priority 1: Backend Integration
+### Priority 1: Database & Data Integration
 
-- [ ] Add database integration (PostgreSQL, MongoDB)
-- [ ] Implement API routes for CRUD operations
-- [ ] Add authentication system (NextAuth.js)
-- [ ] Implement user session management
+- [x] Add authentication system (NextAuth.js)
+- [x] Implement user session management
+- [x] Add API routes for CRUD operations
+- [ ] Migrate car data to database
+- [ ] Implement booking data persistence
+- [ ] Add database migrations and seeding
 
-### Priority 2: Core Functionality
+### Priority 2: Core Functionality Enhancement
 
-- [ ] Add real booking system with date validation
+- [x] Add real booking system with date validation
 - [ ] Implement payment processing (Stripe)
-- [ ] Add search and filtering capabilities
-- [ ] Create user dashboard and booking history
+- [ ] Add advanced search and filtering capabilities
+- [ ] Create comprehensive user dashboard
+- [ ] Add car availability calendar
 
 ### Priority 3: User Experience
 
@@ -353,19 +569,25 @@ npm run lint        # Run ESLint
 ### Strengths
 
 ✅ **Modern Architecture**: Latest Next.js and React versions  
-✅ **Type Safety**: Full TypeScript integration  
+✅ **Type Safety**: Full TypeScript integration with strict typing  
+✅ **Authentication**: Complete NextAuth v5 implementation  
+✅ **API Integration**: RESTful API with proper error handling  
+✅ **Role-Based Access**: Admin/User separation with protected routes  
+✅ **State Management**: Zustand for global state with TypeScript  
+✅ **Form Validation**: Zod schemas with React Hook Form integration  
 ✅ **Component Reusability**: Well-structured component library  
-✅ **Responsive Design**: Mobile-first approach  
+✅ **Responsive Design**: Mobile-first approach with Tailwind  
 ✅ **Clean Code**: Consistent naming and organization  
 ✅ **Modern Tooling**: ESLint, PostCSS, and modern build tools
 
 ### Areas for Improvement
 
-🔧 **Error Handling**: Add comprehensive error boundaries and validation  
-🔧 **Testing**: No test suite currently implemented  
-🔧 **Documentation**: Add JSDoc comments for components  
+🔧 **Testing Suite**: Add comprehensive unit and integration tests  
+🔧 **Database Migration**: Move car data from mock to database  
+🔧 **Payment Integration**: Add Stripe or similar payment processing  
 🔧 **Performance**: Add performance monitoring and optimization  
-🔧 **Security**: Implement proper security headers and validation
+🔧 **Advanced Features**: Real-time notifications and updates  
+🔧 **Documentation**: Add JSDoc comments for components
 
 ### Development Standards
 
