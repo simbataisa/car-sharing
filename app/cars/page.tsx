@@ -1,4 +1,3 @@
-
 import { Navbar } from "@/components/Navbar";
 import { CarCard } from "@/components/CarCard";
 import { cars } from "@/lib/data";

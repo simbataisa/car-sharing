@@ -1,4 +1,3 @@
-
 export interface Car {
   id: number;
   make: string;
@@ -41,7 +40,7 @@ export const cars: Car[] = [
     description: "A stylish and high-performance electric car.",
     imageUrl: "/placeholder.svg",
   },
-    {
+  {
     id: 4,
     make: "Ford",
     model: "Mustang",
