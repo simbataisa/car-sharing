@@ -15,17 +15,145 @@ model User {
   email     String   @unique
   name      String
   password  String
-  role      Role     @default(USER)
+  role      SimpleRole @default(USER) // Legacy role field for backward compatibility
   isActive  Boolean  @default(true)
   lastLogin DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
+  // RBAC relationships
+  userRoles     UserRole[]
+  userPermissions UserPermission[]
+  
+  // Existing relationships
   bookings  Booking[]
   accounts  Account[]
   sessions  Session[]
+  
+  // ABAC attributes (JSON for flexibility)
+  attributes String? // JSON string for user attributes
+  department String?
+  location   String?
+  level      String?
 
   @@map("users")
+}
+
+// RBAC Tables
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g., "ADMIN", "USER", "MANAGER", "MODERATOR"
+  displayName String   // e.g., "Administrator", "Regular User"
+  description String?
+  isActive    Boolean  @default(true)
+  isSystem    Boolean  @default(false) // System roles cannot be deleted
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relationships
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+  
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g., "cars:read", "users:write", "bookings:delete"
+  displayName String   // e.g., "View Cars", "Manage Users"
+  description String?
+  resource    String   // e.g., "cars", "users", "bookings"
+  action      String   // e.g., "read", "write", "delete", "create"
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relationships
+  rolePermissions RolePermission[]
+  userPermissions UserPermission[]
+  policyRules     PolicyRule[]
+  
+  @@map("permissions")
+}
+
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  assignedBy String? // Who assigned this role
+  expiresAt DateTime? // Optional expiration
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  id           String   @id @default(cuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserPermission {
+  id           String   @id @default(cuid())
+  userId       String
+  permissionId String
+  assignedBy   String? // Who assigned this permission
+  expiresAt    DateTime? // Optional expiration
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, permissionId])
+  @@map("user_permissions")
+}
+
+// ABAC Tables
+model Resource {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g., "car", "booking", "user"
+  displayName String   // e.g., "Car", "Booking", "User"
+  description String?
+  attributes  String?  // JSON string for resource attributes schema
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  policyRules PolicyRule[]
+  
+  @@map("resources")
+}
+
+model PolicyRule {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  description  String?
+  resourceId   String?
+  permissionId String?
+  effect       PolicyEffect @default(ALLOW) // ALLOW or DENY
+  conditions   String   // JSON string for conditions
+  priority     Int      @default(100) // Higher number = higher priority
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  resource   Resource?   @relation(fields: [resourceId], references: [id])
+  permission Permission? @relation(fields: [permissionId], references: [id])
+  
+  @@map("policy_rules")
 }
 
 model Account {
@@ -103,9 +231,9 @@ model Booking {
   @@map("bookings")
 }
 
-enum Role {
-  USER
-  ADMIN
+enum PolicyEffect {
+  ALLOW
+  DENY
 }
 
 enum BookingStatus {
@@ -113,4 +241,9 @@ enum BookingStatus {
   CONFIRMED
   CANCELLED
   COMPLETED
+}
+
+enum SimpleRole {
+  USER
+  ADMIN
 }

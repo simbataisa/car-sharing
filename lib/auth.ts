@@ -7,21 +7,21 @@ import bcrypt from "bcryptjs";
 // Extend the built-in session types
 declare module "next-auth" {
   interface User {
-    role: string;
+    role: "USER" | "ADMIN";
   }
   interface Session {
     user: {
       id: string;
       email: string;
       name: string;
-      role: string;
+      role: "USER" | "ADMIN";
     };
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
-    role: string;
+    role: "USER" | "ADMIN";
     id: string;
   }
 }
