@@ -1,23 +1,25 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Navbar } from "@/components/Navbar"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { signupSchema, type SignupFormData } from "@/lib/validations"
-import { useAppStore } from "@/lib/store"
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Navbar } from "@/components/Navbar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { signupSchema, type SignupFormData } from "@/lib/validations";
+import { useAppStore } from "@/lib/store";
 
 export default function SignupPage() {
-  const router = useRouter()
-  const { setError, setIsLoading, isLoading } = useAppStore()
-  const [registrationError, setRegistrationError] = useState<string | null>(null)
-  const [isSuccess, setIsSuccess] = useState(false)
+  const router = useRouter();
+  const { setError, setIsLoading, isLoading } = useAppStore();
+  const [registrationError, setRegistrationError] = useState<string | null>(
+    null
+  );
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const {
     register,
@@ -25,13 +27,13 @@ export default function SignupPage() {
     formState: { errors },
   } = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
-  })
+  });
 
   const onSubmit = async (data: SignupFormData) => {
     try {
-      setIsLoading(true)
-      setRegistrationError(null)
-      setError(null)
+      setIsLoading(true);
+      setRegistrationError(null);
+      setError(null);
 
       const response = await fetch("/api/auth/register", {
         method: "POST",
@@ -43,25 +45,25 @@ export default function SignupPage() {
           email: data.email,
           password: data.password,
         }),
-      })
+      });
 
-      const result = await response.json()
+      const result = await response.json();
 
       if (!response.ok) {
-        setRegistrationError(result.error || "Registration failed")
-        return
+        setRegistrationError(result.error || "Registration failed");
+        return;
       }
 
-      setIsSuccess(true)
+      setIsSuccess(true);
       setTimeout(() => {
-        router.push("/login")
-      }, 2000)
+        router.push("/login");
+      }, 2000);
     } catch (error) {
-      setRegistrationError("An error occurred during registration")
+      setRegistrationError("An error occurred during registration");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   if (isSuccess) {
     return (
@@ -90,7 +92,8 @@ export default function SignupPage() {
                   Registration Successful!
                 </h2>
                 <p className="text-muted-foreground mb-4">
-                  Your account has been created successfully. Redirecting to login...
+                  Your account has been created successfully. Redirecting to
+                  login...
                 </p>
                 <Button asChild>
                   <Link href="/login">Go to Login</Link>
@@ -100,7 +103,7 @@ export default function SignupPage() {
           </Card>
         </main>
       </div>
-    )
+    );
   }
 
   return (
@@ -118,7 +121,7 @@ export default function SignupPage() {
                   {registrationError}
                 </div>
               )}
-              
+
               <div>
                 <Label htmlFor="name">Name</Label>
                 <Input
@@ -129,10 +132,12 @@ export default function SignupPage() {
                   className={errors.name ? "border-red-500" : ""}
                 />
                 {errors.name && (
-                  <p className="text-sm text-red-600 mt-1">{errors.name.message}</p>
+                  <p className="text-sm text-red-600 mt-1">
+                    {errors.name.message}
+                  </p>
                 )}
               </div>
-              
+
               <div>
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -143,10 +148,12 @@ export default function SignupPage() {
                   className={errors.email ? "border-red-500" : ""}
                 />
                 {errors.email && (
-                  <p className="text-sm text-red-600 mt-1">{errors.email.message}</p>
+                  <p className="text-sm text-red-600 mt-1">
+                    {errors.email.message}
+                  </p>
                 )}
               </div>
-              
+
               <div>
                 <Label htmlFor="password">Password</Label>
                 <Input
@@ -157,10 +164,12 @@ export default function SignupPage() {
                   className={errors.password ? "border-red-500" : ""}
                 />
                 {errors.password && (
-                  <p className="text-sm text-red-600 mt-1">{errors.password.message}</p>
+                  <p className="text-sm text-red-600 mt-1">
+                    {errors.password.message}
+                  </p>
                 )}
               </div>
-              
+
               <div>
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <Input
@@ -171,19 +180,17 @@ export default function SignupPage() {
                   className={errors.confirmPassword ? "border-red-500" : ""}
                 />
                 {errors.confirmPassword && (
-                  <p className="text-sm text-red-600 mt-1">{errors.confirmPassword.message}</p>
+                  <p className="text-sm text-red-600 mt-1">
+                    {errors.confirmPassword.message}
+                  </p>
                 )}
               </div>
-              
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={isLoading}
-              >
+
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Creating Account..." : "Sign Up"}
               </Button>
             </form>
-            
+
             <p className="text-center text-sm text-muted-foreground mt-4">
               Already have an account?{" "}
               <Link href="/login" className="underline hover:text-primary">
@@ -194,5 +201,5 @@ export default function SignupPage() {
         </Card>
       </main>
     </div>
-  )
+  );
 }

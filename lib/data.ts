@@ -61,3 +61,37 @@ export const cars: Car[] = [
     imageUrl: "/placeholder.svg",
   },
 ];
+
+// Extended Car interface with features
+export interface CarWithFeatures extends Car {
+  features: string[];
+}
+
+// Function to get a car by ID
+export async function getCar(id: number): Promise<Car | null> {
+  const car = cars.find((c) => c.id === id);
+  return car || null;
+}
+
+// Function to parse car features from a regular Car object
+export function parseCarFeatures(car: Car): CarWithFeatures {
+  // For now, we'll add some default features based on the car make/model
+  // In a real app, this would parse actual features from the database
+  const defaultFeatures: Record<string, string[]> = {
+    Toyota: ["Fuel Efficient", "Reliable", "Safety Features"],
+    Honda: ["Spacious Interior", "All-Wheel Drive", "Backup Camera"],
+    Tesla: ["Electric Motor", "Autopilot", "Supercharging", "Zero Emissions"],
+    Ford: ["Powerful Engine", "Sports Mode", "Premium Audio"],
+    BMW: ["Luxury Interior", "Premium Sound System", "Advanced Safety"],
+  };
+
+  const features = defaultFeatures[car.make] || [
+    "Comfortable Seating",
+    "Air Conditioning",
+  ];
+
+  return {
+    ...car,
+    features,
+  };
+}

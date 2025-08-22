@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed-admin": "tsx scripts/seed-admin.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
@@ -41,6 +42,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
     "tailwindcss": "^4",
+    "tsx": "^4.20.4",
     "tw-animate-css": "^1.3.7",
     "typescript": "^5"
   }

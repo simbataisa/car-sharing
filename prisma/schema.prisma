@@ -16,6 +16,8 @@ model User {
   name      String
   password  String
   role      Role     @default(USER)
+  isActive  Boolean  @default(true)
+  lastLogin DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
@@ -75,7 +77,7 @@ model Car {
   description String
   imageUrl    String
   available   Boolean  @default(true)
-  features    String[] // JSON array of features
+  features    String   // JSON string of features array
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
