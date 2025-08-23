@@ -27,6 +27,11 @@ interface User {
   name: string;
   role: "USER" | "ADMIN";
   isActive: boolean;
+  emailVerified: boolean;
+  emailVerificationStatus:
+    | "VERIFIED"
+    | "PENDING_EMAIL_VERIFICATION"
+    | "VERIFICATION_FAILED";
   lastLogin: string | null;
   createdAt: string;
   updatedAt: string;
@@ -41,6 +46,20 @@ interface UserFormData {
   password: string;
   role: "USER" | "ADMIN";
   isActive: boolean;
+}
+
+interface CreateUserData {
+  email: string;
+  name: string;
+  role: "USER" | "ADMIN";
+}
+
+interface EmailVerificationData {
+  email: string;
+  name: string;
+  role: "USER" | "ADMIN";
+  step: "email" | "otp" | "complete";
+  otp: string;
 }
 
 export default function UserManagement() {
@@ -58,6 +77,17 @@ export default function UserManagement() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Auto-clear alerts after 5 seconds
+  useEffect(() => {
+    if (success || error) {
+      const timer = setTimeout(() => {
+        setSuccess(null);
+        setError(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [success, error]);
+
   const [formData, setFormData] = useState<UserFormData>({
     email: "",
     name: "",
@@ -65,6 +95,31 @@ export default function UserManagement() {
     role: "USER",
     isActive: true,
   });
+
+  // Create user state
+  const [createUserData, setCreateUserData] = useState<CreateUserData>({
+    email: "",
+    name: "",
+    role: "USER",
+  });
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+
+  // Email verification state
+  const [emailVerificationData, setEmailVerificationData] =
+    useState<EmailVerificationData>({
+      email: "",
+      name: "",
+      role: "USER",
+      step: "email",
+      otp: "",
+    });
+  const [isOTPLoading, setIsOTPLoading] = useState(false);
+  const [isVerifyingOTP, setIsVerifyingOTP] = useState(false);
+
+  // Resend verification state
+  const [isResendingVerification, setIsResendingVerification] = useState<
+    string | null
+  >(null); // Track which user ID is being processed
 
   useEffect(() => {
     fetchUsers();
@@ -97,26 +152,44 @@ export default function UserManagement() {
     }
   };
 
+  // Create user with OTP verification (final step)
   const handleCreateUser = async () => {
+    if (emailVerificationData.step !== "complete") {
+      setError("Please complete email verification first");
+      return;
+    }
+
+    setIsCreatingUser(true);
+    setError(null);
+
     try {
-      const response = await fetch("/api/admin/users", {
+      const response = await fetch("/api/admin/users/create-verified", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          email: emailVerificationData.email,
+          name: emailVerificationData.name,
+          role: emailVerificationData.role,
+          sendWelcomeEmail: true,
+        }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setSuccess("User created successfully");
+        setSuccess(
+          "User created successfully! Welcome email has been sent to the user's email address."
+        );
         setShowCreateModal(false);
-        resetForm();
+        resetEmailVerificationForm();
         fetchUsers();
       } else {
         setError(data.error || "Failed to create user");
       }
     } catch (error) {
       setError("An error occurred while creating user");
+    } finally {
+      setIsCreatingUser(false);
     }
   };
 
@@ -196,6 +269,96 @@ export default function UserManagement() {
     setSelectedUser(null);
   };
 
+  const resetCreateUserForm = () => {
+    setCreateUserData({
+      email: "",
+      name: "",
+      role: "USER",
+    });
+  };
+
+  const resetEmailVerificationForm = () => {
+    setEmailVerificationData({
+      email: "",
+      name: "",
+      role: "USER",
+      step: "email",
+      otp: "",
+    });
+  };
+
+  // Email verification functions
+  const handleSendOTP = async () => {
+    if (!emailVerificationData.email || !emailVerificationData.name) {
+      setError("Email and name are required");
+      return;
+    }
+
+    setIsOTPLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/admin/email/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: emailVerificationData.email,
+          name: emailVerificationData.name,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setEmailVerificationData({ ...emailVerificationData, step: "otp" });
+        setSuccess("OTP sent successfully to the email address");
+      } else {
+        setError(data.error || "Failed to send OTP");
+      }
+    } catch (error) {
+      setError("An error occurred while sending OTP");
+    } finally {
+      setIsOTPLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (!emailVerificationData.otp || emailVerificationData.otp.length !== 6) {
+      setError("Please enter a valid 6-digit OTP");
+      return;
+    }
+
+    setIsVerifyingOTP(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/admin/email/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: emailVerificationData.email,
+          otp: emailVerificationData.otp,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setEmailVerificationData({
+          ...emailVerificationData,
+          step: "complete",
+        });
+        setSuccess("Email verified successfully");
+      } else {
+        setError(data.error || "Invalid OTP");
+      }
+    } catch (error) {
+      setError("An error occurred while verifying OTP");
+    } finally {
+      setIsVerifyingOTP(false);
+    }
+  };
+
   const openEditModal = (user: User) => {
     setSelectedUser(user);
     setFormData({
@@ -211,6 +374,39 @@ export default function UserManagement() {
   const openDeleteModal = (user: User) => {
     setSelectedUser(user);
     setShowDeleteModal(true);
+  };
+
+  const handleResendVerification = async (user: User) => {
+    if (user.emailVerificationStatus !== "PENDING_EMAIL_VERIFICATION") {
+      setError("User email verification is not pending");
+      return;
+    }
+
+    setIsResendingVerification(user.id);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch(
+        `/api/admin/users/${user.id}/resend-verification`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccess(`Verification email has been resent to ${user.email}`);
+      } else {
+        setError(data.error || "Failed to resend verification email");
+      }
+    } catch (error) {
+      setError("An error occurred while resending verification email");
+    } finally {
+      setIsResendingVerification(null);
+    }
   };
 
   return (
@@ -330,6 +526,9 @@ export default function UserManagement() {
                         Status
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Email Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Bookings
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -385,6 +584,39 @@ export default function UserManagement() {
                             )}
                           </span>
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${
+                              user.emailVerificationStatus === "VERIFIED"
+                                ? "bg-green-100 text-green-800"
+                                : user.emailVerificationStatus ===
+                                  "PENDING_EMAIL_VERIFICATION"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {user.emailVerificationStatus === "VERIFIED" && (
+                              <>
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Verified
+                              </>
+                            )}
+                            {user.emailVerificationStatus ===
+                              "PENDING_EMAIL_VERIFICATION" && (
+                              <>
+                                <AlertCircle className="w-3 h-3 mr-1" />
+                                Pending
+                              </>
+                            )}
+                            {user.emailVerificationStatus ===
+                              "VERIFICATION_FAILED" && (
+                              <>
+                                <XCircle className="w-3 h-3 mr-1" />
+                                Failed
+                              </>
+                            )}
+                          </span>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {user._count.bookings}
                         </td>
@@ -402,6 +634,35 @@ export default function UserManagement() {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
+                            {user.emailVerificationStatus ===
+                              "PENDING_EMAIL_VERIFICATION" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleResendVerification(user)}
+                                disabled={isResendingVerification === user.id}
+                                className="text-blue-600 hover:text-blue-700"
+                                title="Resend verification email"
+                              >
+                                {isResendingVerification === user.id ? (
+                                  <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full" />
+                                ) : (
+                                  <svg
+                                    className="h-4 w-4"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M3 8l7.89 7.89a1 1 0 001.415 0L21 7M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                    />
+                                  </svg>
+                                )}
+                              </Button>
+                            )}
                             <Button
                               variant="outline"
                               size="sm"
@@ -478,7 +739,7 @@ export default function UserManagement() {
         </Card>
       </div>
 
-      {/* Create User Modal */}
+      {/* Create User Modal - OTP Verification Workflow */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
@@ -486,83 +747,381 @@ export default function UserManagement() {
               <h3 className="text-lg font-medium text-gray-900 mb-4">
                 Create New User
               </h3>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="create-name">Name</Label>
-                  <Input
-                    id="create-name"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
+
+              {/* Progress indicator */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between text-sm text-gray-500">
+                  <span
+                    className={
+                      emailVerificationData.step === "email"
+                        ? "text-blue-600 font-medium"
+                        : ""
                     }
-                    placeholder="Enter user name"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="create-email">Email</Label>
-                  <Input
-                    id="create-email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    placeholder="Enter email address"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="create-password">Password</Label>
-                  <Input
-                    id="create-password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) =>
-                      setFormData({ ...formData, password: e.target.value })
-                    }
-                    placeholder="Enter password"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="create-role">Role</Label>
-                  <select
-                    id="create-role"
-                    value={formData.role}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        role: e.target.value as "USER" | "ADMIN",
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="USER">User</option>
-                    <option value="ADMIN">Admin</option>
-                  </select>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="create-active"
-                    checked={formData.isActive}
-                    onChange={(e) =>
-                      setFormData({ ...formData, isActive: e.target.checked })
+                    1. Email Details
+                  </span>
+                  <span
+                    className={
+                      emailVerificationData.step === "otp"
+                        ? "text-blue-600 font-medium"
+                        : ""
                     }
-                    className="rounded border-gray-300"
+                  >
+                    2. Verify OTP
+                  </span>
+                  <span
+                    className={
+                      emailVerificationData.step === "complete"
+                        ? "text-blue-600 font-medium"
+                        : ""
+                    }
+                  >
+                    3. Create User
+                  </span>
+                </div>
+                <div className="mt-2 bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{
+                      width:
+                        emailVerificationData.step === "email"
+                          ? "33%"
+                          : emailVerificationData.step === "otp"
+                          ? "66%"
+                          : "100%",
+                    }}
                   />
-                  <Label htmlFor="create-active">Active</Label>
                 </div>
               </div>
+
+              {/* Step 1: Email Input */}
+              {emailVerificationData.step === "email" && (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="verify-email">Email Address</Label>
+                    <Input
+                      id="verify-email"
+                      type="email"
+                      value={emailVerificationData.email}
+                      onChange={(e) =>
+                        setEmailVerificationData({
+                          ...emailVerificationData,
+                          email: e.target.value,
+                        })
+                      }
+                      placeholder="Enter user's email address"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="verify-name">Full Name</Label>
+                    <Input
+                      id="verify-name"
+                      value={emailVerificationData.name}
+                      onChange={(e) =>
+                        setEmailVerificationData({
+                          ...emailVerificationData,
+                          name: e.target.value,
+                        })
+                      }
+                      placeholder="Enter user's full name"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="verify-role">Role</Label>
+                    <select
+                      id="verify-role"
+                      value={emailVerificationData.role}
+                      onChange={(e) =>
+                        setEmailVerificationData({
+                          ...emailVerificationData,
+                          role: e.target.value as "USER" | "ADMIN",
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="USER">User</option>
+                      <option value="ADMIN">Admin</option>
+                    </select>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <svg
+                          className="h-5 w-5 text-blue-400"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm text-blue-700">
+                          We'll send a verification code to this email address
+                          to confirm the user creation.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: OTP Verification */}
+              {emailVerificationData.step === "otp" && (
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600 mb-4">
+                      We've sent a verification code to{" "}
+                      <strong>{emailVerificationData.email}</strong>
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="otp-input">Verification Code</Label>
+                    <Input
+                      id="otp-input"
+                      type="text"
+                      maxLength={6}
+                      value={emailVerificationData.otp}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, ""); // Only digits
+                        setEmailVerificationData({
+                          ...emailVerificationData,
+                          otp: value,
+                        });
+                      }}
+                      placeholder="Enter 6-digit code"
+                      className="text-center text-lg tracking-widest"
+                      required
+                    />
+                  </div>
+
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <svg
+                          className="h-5 w-5 text-yellow-400"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm text-yellow-700">
+                          The verification code expires in 10 minutes. Check
+                          your email and enter the 6-digit code.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Completion */}
+              {emailVerificationData.step === "complete" && (
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                      <svg
+                        className="h-6 w-6 text-green-600"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      Email Verified!
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Ready to create user account for{" "}
+                      <strong>{emailVerificationData.email}</strong>
+                    </p>
+                  </div>
+
+                  <div className="bg-green-50 border border-green-200 rounded-md p-4">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <svg
+                          className="h-5 w-5 text-green-400"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm text-green-700">
+                          Click "Create User" to complete the account creation.
+                          A welcome email with login credentials will be sent.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
               <div className="flex space-x-3 mt-6">
-                <Button onClick={handleCreateUser} className="flex-1">
-                  Create User
-                </Button>
+                {emailVerificationData.step === "email" && (
+                  <>
+                    <Button
+                      onClick={handleSendOTP}
+                      className="flex-1"
+                      disabled={
+                        isOTPLoading ||
+                        !emailVerificationData.email ||
+                        !emailVerificationData.name
+                      }
+                    >
+                      {isOTPLoading ? (
+                        <>
+                          <svg
+                            className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          Sending Code...
+                        </>
+                      ) : (
+                        "Send Verification Code"
+                      )}
+                    </Button>
+                  </>
+                )}
+
+                {emailVerificationData.step === "otp" && (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        setEmailVerificationData({
+                          ...emailVerificationData,
+                          step: "email",
+                        })
+                      }
+                      className="flex-1"
+                      disabled={isVerifyingOTP}
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      onClick={handleVerifyOTP}
+                      className="flex-1"
+                      disabled={
+                        isVerifyingOTP || emailVerificationData.otp.length !== 6
+                      }
+                    >
+                      {isVerifyingOTP ? (
+                        <>
+                          <svg
+                            className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          Verifying...
+                        </>
+                      ) : (
+                        "Verify Code"
+                      )}
+                    </Button>
+                  </>
+                )}
+
+                {emailVerificationData.step === "complete" && (
+                  <>
+                    <Button
+                      onClick={handleCreateUser}
+                      className="flex-1"
+                      disabled={isCreatingUser}
+                    >
+                      {isCreatingUser ? (
+                        <>
+                          <svg
+                            className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          Creating User...
+                        </>
+                      ) : (
+                        "Create User"
+                      )}
+                    </Button>
+                  </>
+                )}
+
                 <Button
                   variant="outline"
                   onClick={() => {
                     setShowCreateModal(false);
-                    resetForm();
+                    resetEmailVerificationForm();
                   }}
                   className="flex-1"
+                  disabled={isOTPLoading || isVerifyingOTP || isCreatingUser}
                 >
                   Cancel
                 </Button>

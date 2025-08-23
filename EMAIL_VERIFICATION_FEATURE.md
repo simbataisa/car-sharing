@@ -2,7 +2,27 @@
 
 ## Overview
 
-This feature allows admin and telesales personnel to create customer accounts with email verification using OTP (One-Time Password) sent via Resend email service.
+This feature provides a comprehensive email verification system for admin and telesales personnel to create customer accounts. The system supports two workflows:
+
+1. **OTP Verification Workflow**: Real-time email verification for booking creation
+2. **Activation Link Workflow**: Asynchronous email verification for admin user creation
+3. **Resend Verification**: Admin ability to resend activation emails for pending users
+
+## Latest Features
+
+### Resend Email Verification (Enhanced)
+
+- **Admin Management**: Admins can resend activation emails to users with PENDING_EMAIL_VERIFICATION status
+- **Visual Status Indicators**: Email verification status displayed with color-coded badges:
+  - ✅ **Verified**: Green badge with checkmark icon indicating successful email verification
+  - ⚠️ **Pending**: Yellow badge with alert icon for users awaiting activation
+  - ❌ **Failed**: Red badge with X icon for verification failures or expired tokens
+- **One-Click Resend**: Simple resend button with envelope icon for intuitive user experience
+- **Real-time Feedback**: Loading states during resend operation with immediate success/error feedback
+- **Auto-clearing Messages**: Success/error messages automatically clear after 5 seconds for clean UI
+- **Professional Templates**: Consistent branding with CarShare logo and 24-hour activation links
+- **Enhanced Security**: Validates user existence and PENDING_EMAIL_VERIFICATION status before sending
+- **Improved UX**: Seamless integration with admin user management interface
 
 ## Configuration Required
 
@@ -72,7 +92,38 @@ Body: {
 }
 ```
 
+### Resend Verification Email
+
+```
+POST /api/admin/users/[id]/resend-verification
+Response: {
+  "message": "Verification email has been resent successfully",
+  "user": { "id": "...", "email": "...", "name": "..." },
+  "instructions": {
+    "userNotification": "A new activation link has been sent to the user's email",
+    "nextSteps": "User must click the activation link within 24 hours to complete account setup",
+    "activationExpires": "24 hours"
+  }
+}
+```
+
 ## User Interface
+
+### Admin User Management Enhancement
+
+1. **Navigate to User Management**: Admin → User Management (`/admin/users`)
+2. **Email Status Column**: View comprehensive email verification status display:
+   - **✅ Verified**: Green badge with checkmark icon for confirmed email addresses
+   - **⚠️ Pending**: Yellow badge with alert icon for users awaiting email verification
+   - **❌ Failed**: Red badge with X icon for failed or expired verification attempts
+3. **Resend Functionality**: For users with "Pending" status:
+   - Click the resend verification button (envelope icon) next to the status badge
+   - Button shows loading spinner during operation
+   - Immediate feedback with success or error messages
+4. **Real-time Updates**: Status and feedback update immediately without page refresh
+5. **Auto-clearing Messages**: Success/error messages automatically disappear after 5 seconds
+6. **Enhanced Accessibility**: Proper ARIA labels and keyboard navigation support
+7. **Professional Email Templates**: Users receive branded activation emails with clear instructions
 
 ### Booking Creation Enhancement
 

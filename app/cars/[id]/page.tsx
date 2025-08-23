@@ -1,57 +1,7 @@
+"use client";
+
 import { Metadata } from "next";
 import { getCar } from "@/lib/data";
-
-interface PageProps {
-  params: { id: string };
-}
-
-export async function generateMetadata({
-  params,
-}: PageProps): Promise<Metadata> {
-  const car = await getCar(parseInt(params.id));
-
-  if (!car) {
-    return {
-      title: "Car Not Found - CarShare",
-      description: "The requested car could not be found.",
-    };
-  }
-
-  const title = `${car.make} ${car.model} ${car.year} - Rent for $${car.pricePerDay}/day | CarShare`;
-  const description = `Rent a ${car.make} ${car.model} ${car.year} in ${car.location} for $${car.pricePerDay} per day. ${car.description} Book instantly with CarShare.`;
-
-  return {
-    title,
-    description,
-    keywords: `${car.make}, ${car.model}, car rental, ${car.location}, rent car, vehicle rental, ${car.year}`,
-    openGraph: {
-      title,
-      description,
-      type: "website",
-      locale: "en_US",
-      images: [
-        {
-          url: car.imageUrl,
-          width: 800,
-          height: 600,
-          alt: `${car.make} ${car.model} ${car.year}`,
-        },
-      ],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: [car.imageUrl],
-    },
-    alternates: {
-      canonical: `/cars/${car.id}`,
-    },
-  };
-}
-
-("use client");
-
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -70,6 +20,14 @@ import { bookingSchema, type BookingFormData } from "@/lib/validations";
 import { parseCarFeatures, type Car, type CarWithFeatures } from "@/lib/data";
 import { useAppStore } from "@/lib/store";
 import { announceToScreenReader } from "@/lib/accessibility";
+
+interface PageProps {
+  params: { id: string };
+}
+
+// Note: Metadata generation is removed since this is now a client component
+// For SEO, consider splitting this into separate server and client components
+
 export default function CarDetailPage({ params }: PageProps) {
   const { data: session } = useSession();
   const router = useRouter();

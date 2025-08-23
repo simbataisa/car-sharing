@@ -505,6 +505,8 @@ async function createAdminUser() {
       password: hashedPassword,
       role: "ADMIN", // Set legacy role field for backward compatibility
       isActive: true,
+      emailVerified: true, // Admin users are pre-verified
+      emailVerificationStatus: "VERIFIED",
       department: "IT",
       location: "San Francisco",
       attributes: JSON.stringify({

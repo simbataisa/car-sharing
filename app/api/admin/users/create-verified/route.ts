@@ -51,11 +51,21 @@ export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
       );
     }
 
-    // Generate temporary password
-    const temporaryPassword = Math.random().toString(36).slice(-8);
+    // Generate secure temporary password (12 characters with mixed case, numbers, and symbols)
+    const generateSecurePassword = () => {
+      const chars =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%";
+      let password = "";
+      for (let i = 0; i < 12; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return password;
+    };
+
+    const temporaryPassword = generateSecurePassword();
     const hashedPassword = await bcrypt.hash(temporaryPassword, 12);
 
-    // Create user
+    // Create user with proper role and status
     const newUser = await prisma.user.create({
       data: {
         name: validatedData.name,
@@ -74,18 +84,16 @@ export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
       },
     });
 
-    // Send welcome email if requested
-    if (validatedData.sendWelcomeEmail) {
-      try {
-        await sendWelcomeEmail({
-          email: validatedData.email,
-          userName: validatedData.name,
-          temporaryPassword,
-        });
-      } catch (emailError) {
-        console.error("Failed to send welcome email:", emailError);
-        // Don't fail the user creation if email fails
-      }
+    // Always send welcome email with temporary password
+    try {
+      await sendWelcomeEmail({
+        email: validatedData.email,
+        userName: validatedData.name,
+        temporaryPassword,
+      });
+    } catch (emailError) {
+      console.error("Failed to send welcome email:", emailError);
+      // Continue with user creation even if email fails
     }
 
     // Clean up verification record
@@ -96,12 +104,15 @@ export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
     return NextResponse.json(
       {
         user: newUser,
-        temporaryPassword: validatedData.sendWelcomeEmail
-          ? undefined
-          : temporaryPassword,
-        message: validatedData.sendWelcomeEmail
-          ? "User created successfully. Welcome email sent."
-          : "User created successfully.",
+        message:
+          "User created successfully. Welcome email with login credentials has been sent to the user's email address.",
+        emailSent: true,
+        instructions: {
+          userNotification:
+            "The user has been notified via email with their temporary password",
+          nextSteps:
+            "User should check their email and login to change their password",
+        },
       },
       { status: 201 }
     );

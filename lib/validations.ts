@@ -268,7 +268,7 @@ export const adminCreateUserSchema = z.object({
     .min(2, "Name must be at least 2 characters")
     .max(50, "Name must be less than 50 characters"),
   email: z.string().email("Invalid email format"),
-  sendWelcomeEmail: z.boolean().default(true),
+  sendWelcomeEmail: z.boolean().default(true), // Always true for admin-created users
   role: z.enum(["USER", "ADMIN"]).default("USER"),
 });
 

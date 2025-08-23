@@ -124,6 +124,8 @@ car-sharing-app/
 │   │   │   │   ├── roles/        # Role management endpoints
 │   │   │   │   └── users/        # User role assignment APIs
 │   │   │   └── users/            # User management APIs
+│   │   │       ├── [id]/         # Individual user operations
+│   │   │       │   └── resend-verification/ # Resend email verification
 │   │   │       └── create-verified/ # Verified user creation endpoint
 │   │   ├── auth/                 # Authentication endpoints
 │   │   │   ├── [...nextauth]/    # NextAuth configuration
@@ -246,6 +248,14 @@ car-sharing-app/
 
 - **Admin Authentication**: Separate admin login with hybrid role verification
 - **User Management Interface**: Complete CRUD operations for user accounts
+- **Email Verification Management**: Comprehensive email verification system with resend capabilities
+  - Admin can resend activation emails to users with PENDING_EMAIL_VERIFICATION status
+  - Visual email verification status indicators (Verified, Pending, Failed) with color-coded badges
+  - One-click resend functionality with loading states and success feedback
+  - Auto-clearing success/error messages for better user experience (5-second timeout)
+  - Professional email templates with branded design and 24-hour activation links
+  - Real-time status updates and immediate feedback for admin actions
+  - Enhanced UX with envelope icon for resend button and proper accessibility
 - **Customer Creation with Email Verification**: Create customer accounts on-the-fly during booking process
   - Email verification using OTP (One-Time Password) sent via Resend API
   - 3-step verification workflow: email input → OTP verification → account creation
@@ -405,6 +415,10 @@ car-sharing-app/
 - `POST /api/admin/email/send-otp` - Send OTP verification email (admin only)
 - `POST /api/admin/email/verify-otp` - Verify OTP code (admin only)
 - `POST /api/admin/users/create-verified` - Create user after email verification (admin only)
+- `POST /api/admin/users/[id]/resend-verification` - Resend activation email for pending users (admin only)
+  - **Response**: Success message with user details and activation instructions
+  - **Security**: Validates user exists and has PENDING_EMAIL_VERIFICATION status
+  - **Features**: Generates new activation token with 24-hour expiry
 
 #### RBAC/ABAC APIs
 
@@ -1343,7 +1357,7 @@ The implemented RBAC/ABAC system with 5 roles, 16 permissions, and 4 policy rule
 
 ## Recent Updates (Latest)
 
-### Email Verification & Customer Creation System (New)
+### Email Verification & Customer Creation System (Enhanced)
 
 **Email Verification Implementation** (Completed)
 
@@ -1353,6 +1367,18 @@ The implemented RBAC/ABAC system with 5 roles, 16 permissions, and 4 policy rule
 - ✅ Built 3-step verification workflow: email input → OTP verification → account creation
 - ✅ Enhanced booking management with "Create New Customer" functionality
 - ✅ Integrated email verification into admin booking workflow
+
+**Resend Verification Feature** (New)
+
+- ✅ Admin can resend activation emails to users with PENDING_EMAIL_VERIFICATION status
+- ✅ Visual email verification status display with color-coded badges (Verified, Pending, Failed)
+- ✅ One-click resend button with envelope icon for intuitive UX
+- ✅ Real-time loading states and success/error feedback
+- ✅ Auto-clearing messages with 5-second timeout for better user experience
+- ✅ Enhanced API endpoint: `/api/admin/users/[id]/resend-verification`
+- ✅ Professional email templates with consistent branding and 24-hour activation links
+- ✅ Comprehensive validation ensuring only eligible users can receive resend emails
+- ✅ Improved admin user management with enhanced email status tracking
 
 **Security Features** (Completed)
 

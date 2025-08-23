@@ -3,14 +3,17 @@ import { prisma } from "@/lib/prisma";
 import { withAdminAuth } from "@/lib/admin-auth";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import {
+  generateActivationToken,
+  generateActivationTokenExpiry,
+  sendActivationEmail,
+} from "@/lib/email";
 
 // Validation schema for user creation/update
 const createUserSchema = z.object({
   email: z.string().email("Invalid email format"),
   name: z.string().min(2, "Name must be at least 2 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
   role: z.enum(["USER", "ADMIN"]).default("USER"),
-  isActive: z.boolean().default(true),
 });
 
 const updateUserSchema = z.object({
@@ -64,6 +67,8 @@ export const GET = withAdminAuth(async (req: NextRequest, adminUser: any) => {
           name: true,
           role: true,
           isActive: true,
+          emailVerified: true,
+          emailVerificationStatus: true,
           lastLogin: true,
           createdAt: true,
           updatedAt: true,
@@ -102,7 +107,7 @@ export const GET = withAdminAuth(async (req: NextRequest, adminUser: any) => {
   }
 });
 
-// POST /api/admin/users - Create new user
+// POST /api/admin/users - Create new user with activation link
 export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
   try {
     const body = await req.json();
@@ -120,14 +125,22 @@ export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
       );
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(validatedData.password, 12);
+    // Generate activation token
+    const activationToken = generateActivationToken();
+    const activationTokenExpires = generateActivationTokenExpiry();
 
-    // Create user
+    // Create user with PENDING_EMAIL_VERIFICATION status
     const newUser = await prisma.user.create({
       data: {
-        ...validatedData,
-        password: hashedPassword,
+        name: validatedData.name,
+        email: validatedData.email,
+        password: null, // No password until activation
+        role: validatedData.role,
+        isActive: false, // User is inactive until email verification
+        emailVerified: false,
+        emailVerificationStatus: "PENDING_EMAIL_VERIFICATION",
+        activationToken,
+        activationTokenExpires,
       },
       select: {
         id: true,
@@ -135,12 +148,40 @@ export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
         name: true,
         role: true,
         isActive: true,
+        emailVerified: true,
+        emailVerificationStatus: true,
         createdAt: true,
-        updatedAt: true,
       },
     });
 
-    return NextResponse.json(newUser, { status: 201 });
+    // Send activation email
+    try {
+      await sendActivationEmail({
+        email: validatedData.email,
+        userName: validatedData.name,
+        activationToken,
+      });
+    } catch (emailError) {
+      console.error("Failed to send activation email:", emailError);
+      // Don't fail user creation if email fails, but log it
+    }
+
+    return NextResponse.json(
+      {
+        user: newUser,
+        message:
+          "User created successfully. Activation email has been sent to the user's email address.",
+        activationRequired: true,
+        instructions: {
+          userNotification:
+            "The user has been sent an activation link via email",
+          nextSteps:
+            "User must click the activation link within 24 hours to complete account setup",
+          activationExpires: "24 hours",
+        },
+      },
+      { status: 201 }
+    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

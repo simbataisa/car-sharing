@@ -14,9 +14,13 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String
-  password  String
+  password  String?
   role      SimpleRole @default(USER) // Legacy role field for backward compatibility
   isActive  Boolean  @default(true)
+  emailVerified    Boolean  @default(false)
+  emailVerificationStatus EmailVerificationStatus @default(VERIFIED)
+  activationToken  String?  @unique
+  activationTokenExpires DateTime?
   lastLogin DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -259,4 +263,10 @@ enum BookingStatus {
 enum SimpleRole {
   USER
   ADMIN
+}
+
+enum EmailVerificationStatus {
+  VERIFIED
+  PENDING_EMAIL_VERIFICATION
+  VERIFICATION_FAILED
 }
