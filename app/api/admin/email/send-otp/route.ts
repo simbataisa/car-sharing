@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAdminAuth } from "@/lib/admin-auth";
 import { emailVerificationSchema } from "@/lib/validations";
-import { sendOTPEmail, generateOTP } from "@/lib/email";
-
-// Helper to access emailVerification model with proper typing
-const emailVerificationModel = (prisma as any).emailVerification;
+import { verificationService } from "@/lib/verification";
 
 // POST /api/admin/email/send-otp - Send OTP to email address
 export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
@@ -25,33 +22,18 @@ export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
       );
     }
 
-    // Generate OTP
-    const otp = generateOTP();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-    // Delete any existing verification records for this email
-    await emailVerificationModel.deleteMany({
-      where: { email: validatedData.email },
-    });
-
-    // Create new verification record
-    await emailVerificationModel.create({
-      data: {
-        email: validatedData.email,
-        otp,
-        expiresAt,
-      },
-    });
-
-    // Send OTP email
-    await sendOTPEmail({
-      email: validatedData.email,
-      otp,
-    });
+    // Use unified verification service to send OTP
+    const verification = await verificationService.sendOTP(
+      validatedData.email,
+      "booking_customer_creation",
+      adminUser.id
+    );
 
     return NextResponse.json({
       message: "OTP sent successfully",
       email: validatedData.email,
+      verificationId: verification.id,
+      expiresAt: verification.expires,
     });
   } catch (error) {
     if (error instanceof Error && error.message.includes("Failed to send")) {

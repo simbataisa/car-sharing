@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAdminAuth } from "@/lib/admin-auth";
-import {
-  generateActivationToken,
-  generateActivationTokenExpiry,
-  sendActivationEmail,
-} from "@/lib/email";
+import { verificationService } from "@/lib/verification";
 
 // POST /api/admin/users/[id]/resend-verification - Resend activation email for user
 export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
@@ -48,27 +44,14 @@ export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
       );
     }
 
-    // Generate new activation token
-    const activationToken = generateActivationToken();
-    const activationTokenExpires = generateActivationTokenExpiry();
-
-    // Update user with new activation token
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        activationToken,
-        activationTokenExpires,
-        updatedAt: new Date(),
-      },
-    });
-
-    // Send activation email
+    // Send new activation link using unified verification service
     try {
-      await sendActivationEmail({
-        email: user.email,
-        userName: user.name,
-        activationToken,
-      });
+      const verification = await verificationService.sendActivationLink(
+        user.email,
+        user.name,
+        "admin_user_creation",
+        adminUser.id
+      );
 
       return NextResponse.json(
         {
@@ -77,6 +60,10 @@ export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
             id: user.id,
             email: user.email,
             name: user.name,
+          },
+          verification: {
+            id: verification.id,
+            expiresAt: verification.expires,
           },
           instructions: {
             userNotification:

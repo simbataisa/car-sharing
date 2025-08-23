@@ -3,11 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { withAdminAuth } from "@/lib/admin-auth";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import {
-  generateActivationToken,
-  generateActivationTokenExpiry,
-  sendActivationEmail,
-} from "@/lib/email";
+import { verificationService } from "@/lib/verification";
 
 // Validation schema for user creation/update
 const createUserSchema = z.object({
@@ -125,10 +121,6 @@ export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
       );
     }
 
-    // Generate activation token
-    const activationToken = generateActivationToken();
-    const activationTokenExpires = generateActivationTokenExpiry();
-
     // Create user with PENDING_EMAIL_VERIFICATION status
     const newUser = await prisma.user.create({
       data: {
@@ -139,8 +131,6 @@ export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
         isActive: false, // User is inactive until email verification
         emailVerified: false,
         emailVerificationStatus: "PENDING_EMAIL_VERIFICATION",
-        activationToken,
-        activationTokenExpires,
       },
       select: {
         id: true,
@@ -154,13 +144,14 @@ export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
       },
     });
 
-    // Send activation email
+    // Create activation link using unified verification service
     try {
-      await sendActivationEmail({
-        email: validatedData.email,
-        userName: validatedData.name,
-        activationToken,
-      });
+      await verificationService.sendActivationLink(
+        validatedData.email,
+        validatedData.name,
+        "admin_user_creation",
+        adminUser.id // Track which admin created this user
+      );
     } catch (emailError) {
       console.error("Failed to send activation email:", emailError);
       // Don't fail user creation if email fails, but log it

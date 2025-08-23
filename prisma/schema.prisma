@@ -19,8 +19,6 @@ model User {
   isActive  Boolean  @default(true)
   emailVerified    Boolean  @default(false)
   emailVerificationStatus EmailVerificationStatus @default(VERIFIED)
-  activationToken  String?  @unique
-  activationTokenExpires DateTime?
   lastLogin DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -191,14 +189,40 @@ model Session {
 }
 
 model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
+  id          String            @id @default(cuid())
+  identifier  String            // email address
+  token       String            @unique
+  type        VerificationType  // OTP, ACTIVATION_LINK, PASSWORD_RESET, etc.
+  purpose     String?           // "booking_customer_creation", "admin_user_creation", etc.
+  
+  // Security fields
+  expires     DateTime
+  attempts    Int               @default(0)
+  maxAttempts Int               @default(3)
+  
+  // Status tracking
+  status      TokenStatus       @default(PENDING)
+  verifiedAt  DateTime?
+  
+  // Audit fields
+  createdBy   String?           // admin user ID who triggered
+  ipAddress   String?
+  userAgent   String?
+  
+  // Metadata
+  metadata    String?           // JSON for workflow-specific data
+  
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
   @@unique([identifier, token])
-  @@map("verificationtokens")
+  @@index([identifier, type, status])
+  @@index([expires])
+  @@index([createdBy])
+  @@map("verification_tokens")
 }
 
+// Legacy table - will be removed after migration
 model EmailVerification {
   id        String   @id @default(cuid())
   email     String
@@ -269,4 +293,20 @@ enum EmailVerificationStatus {
   VERIFIED
   PENDING_EMAIL_VERIFICATION
   VERIFICATION_FAILED
+}
+
+enum VerificationType {
+  OTP
+  ACTIVATION_LINK
+  PASSWORD_RESET
+  EMAIL_CHANGE
+  TWO_FACTOR
+}
+
+enum TokenStatus {
+  PENDING
+  VERIFIED
+  EXPIRED
+  FAILED
+  REVOKED
 }

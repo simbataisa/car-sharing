@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { validateActivationToken, sendWelcomeEmail } from "@/lib/email";
+import { verificationService } from "@/lib/verification";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -21,39 +21,76 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const validatedData = activationSchema.parse(body);
 
-    // Validate token format
-    if (!validateActivationToken(validatedData.token)) {
-      return NextResponse.json(
-        { error: "Invalid activation token format" },
-        { status: 400 }
+    // Verify the activation token using unified verification service
+    let verification;
+    try {
+      // First find the verification record to get the email
+      verification = await (prisma as any).verificationToken.findFirst({
+        where: {
+          token: validatedData.token,
+          type: "ACTIVATION_LINK",
+        },
+      });
+
+      if (!verification) {
+        return NextResponse.json(
+          { error: "Invalid activation token" },
+          { status: 400 }
+        );
+      }
+
+      // Now verify it properly
+      verification = await verificationService.verifyActivationLink(
+        verification.identifier,
+        validatedData.token
       );
-    }
+    } catch (error) {
+      // If verification fails, try to find by token for better error messaging
+      const tokenRecord = await (prisma as any).verificationToken.findFirst({
+        where: {
+          token: validatedData.token,
+          type: "ACTIVATION_LINK",
+        },
+      });
 
-    // Find user with this activation token
-    const user = await prisma.user.findFirst({
-      where: {
-        activationToken: validatedData.token,
-        emailVerificationStatus: "PENDING_EMAIL_VERIFICATION",
-      },
-    });
+      if (!tokenRecord) {
+        return NextResponse.json(
+          { error: "Invalid activation token" },
+          { status: 400 }
+        );
+      }
 
-    if (!user) {
+      if (tokenRecord.expires < new Date()) {
+        return NextResponse.json(
+          {
+            error:
+              "Activation token has expired. Please contact support to resend.",
+          },
+          { status: 400 }
+        );
+      }
+
       return NextResponse.json(
         { error: "Invalid or expired activation token" },
         { status: 400 }
       );
     }
 
-    // Check if token has expired
-    if (
-      user.activationTokenExpires &&
-      user.activationTokenExpires < new Date()
-    ) {
+    // Find user by email from verification record
+    const user = await prisma.user.findUnique({
+      where: {
+        email: verification.identifier,
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 400 });
+    }
+
+    // Check if user is already activated
+    if (user.emailVerificationStatus === "VERIFIED") {
       return NextResponse.json(
-        {
-          error:
-            "Activation token has expired. Please contact support to resend.",
-        },
+        { error: "Account is already activated" },
         { status: 400 }
       );
     }
@@ -69,8 +106,6 @@ export async function POST(req: NextRequest) {
         isActive: true,
         emailVerified: true,
         emailVerificationStatus: "VERIFIED",
-        activationToken: null, // Clear the token
-        activationTokenExpires: null,
         updatedAt: new Date(),
       },
       select: {
@@ -122,29 +157,15 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Validate token format
-    if (!validateActivationToken(token)) {
-      return NextResponse.json(
-        { error: "Invalid activation token format" },
-        { status: 400 }
-      );
-    }
-
-    // Find user with this activation token
-    const user = await prisma.user.findFirst({
+    // Find verification token record
+    const verification = await (prisma as any).verificationToken.findFirst({
       where: {
-        activationToken: token,
-        emailVerificationStatus: "PENDING_EMAIL_VERIFICATION",
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        activationTokenExpires: true,
+        token,
+        type: "ACTIVATION_LINK",
       },
     });
 
-    if (!user) {
+    if (!verification) {
       return NextResponse.json(
         { error: "Invalid activation token", valid: false },
         { status: 400 }
@@ -152,12 +173,60 @@ export async function GET(req: NextRequest) {
     }
 
     // Check if token has expired
-    const isExpired =
-      user.activationTokenExpires && user.activationTokenExpires < new Date();
+    const isExpired = verification.expires < new Date();
 
     if (isExpired) {
       return NextResponse.json(
         { error: "Activation token has expired", valid: false, expired: true },
+        { status: 400 }
+      );
+    }
+
+    // Check if token is already used
+    if (verification.status === "VERIFIED") {
+      return NextResponse.json(
+        {
+          error: "Activation token has already been used",
+          valid: false,
+          used: true,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check if token is still pending
+    if (verification.status !== "PENDING") {
+      return NextResponse.json(
+        { error: "Activation token is not valid", valid: false },
+        { status: 400 }
+      );
+    }
+
+    // Find user to get additional info
+    const user = await prisma.user.findUnique({
+      where: { email: verification.identifier },
+      select: {
+        email: true,
+        name: true,
+        emailVerificationStatus: true,
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found", valid: false },
+        { status: 400 }
+      );
+    }
+
+    // Check if user is already verified
+    if (user.emailVerificationStatus === "VERIFIED") {
+      return NextResponse.json(
+        {
+          error: "Account is already activated",
+          valid: false,
+          alreadyVerified: true,
+        },
         { status: 400 }
       );
     }
@@ -169,7 +238,7 @@ export async function GET(req: NextRequest) {
           email: user.email,
           name: user.name,
         },
-        expiresAt: user.activationTokenExpires,
+        expiresAt: verification.expires,
       },
       { status: 200 }
     );

@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "next lint",
     "db:seed": "tsx prisma/seed.ts",
-    "db:reset": "prisma db push --force-reset && npm run db:seed"
+    "db:reset": "prisma db push --force-reset && npm run db:seed",
+    "verification:migrate": "tsx scripts/migrate-verification-data.ts",
+    "verification:cleanup": "tsx scripts/cleanup-legacy-verification.ts",
+    "activation-tokens:migrate": "tsx scripts/migrate-activation-tokens.ts",
+    "activation-tokens:cleanup": "tsx scripts/cleanup-activation-tokens.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

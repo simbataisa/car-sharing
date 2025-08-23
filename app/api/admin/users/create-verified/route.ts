@@ -3,10 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { withAdminAuth } from "@/lib/admin-auth";
 import { adminCreateUserSchema } from "@/lib/validations";
 import { sendWelcomeEmail } from "@/lib/email";
+import { verificationService } from "@/lib/verification";
 import bcrypt from "bcryptjs";
-
-// Helper to access emailVerification model with proper typing
-const emailVerificationModel = (prisma as any).emailVerification;
 
 // POST /api/admin/users/create-verified - Create user after email verification
 export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
@@ -14,27 +12,21 @@ export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
     const body = await req.json();
     const validatedData = adminCreateUserSchema.parse(body);
 
-    // Check if email has been verified
-    const verification = await emailVerificationModel.findFirst({
-      where: {
-        email: validatedData.email,
-        verified: true,
-      },
-      orderBy: { updatedAt: "desc" },
-    });
-
-    if (!verification) {
-      return NextResponse.json(
-        { error: "Email not verified. Please verify email first." },
-        { status: 400 }
+    // Check if email has been verified using unified verification service
+    const hasRecentVerification =
+      await verificationService.hasRecentVerification(
+        validatedData.email,
+        "OTP",
+        "VERIFIED",
+        60 // within last 60 minutes
       );
-    }
 
-    // Check if verification is still valid (within 1 hour of verification)
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    if (verification.updatedAt < oneHourAgo) {
+    if (!hasRecentVerification) {
       return NextResponse.json(
-        { error: "Email verification expired. Please verify email again." },
+        {
+          error:
+            "Email not verified or verification expired. Please verify email first.",
+        },
         { status: 400 }
       );
     }
@@ -96,10 +88,8 @@ export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
       // Continue with user creation even if email fails
     }
 
-    // Clean up verification record
-    await emailVerificationModel.deleteMany({
-      where: { email: validatedData.email },
-    });
+    // Note: We don't clean up verification records here anymore
+    // The unified service manages its own cleanup via background jobs
 
     return NextResponse.json(
       {
