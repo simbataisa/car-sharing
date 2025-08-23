@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { withAdminAuth } from "@/lib/admin-auth";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { getActivityTracker } from "@/lib/activity-tracker";
+import { ActivityEventFactory } from "@/lib/events/factory";
 
 const updateUserSchema = z.object({
   email: z.string().email("Invalid email format").optional(),
@@ -145,21 +147,64 @@ export const PUT = withAdminAuth(async (req: NextRequest, adminUser: any) => {
 
     // Update user
     const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: updateData,
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        isActive: true,
-        lastLogin: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+        where: { id: userId },
+        data: updateData,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
 
-    return NextResponse.json(updatedUser);
+      // Track user update activity
+      const context = ActivityEventFactory.createContext(req, {
+        userId: adminUser.id,
+        source: "api",
+      });
+
+      // Determine if this is a status change (activation/deactivation)
+      const isStatusChange = validatedData.hasOwnProperty('isActive') && 
+        existingUser.isActive !== validatedData.isActive;
+      
+      const action = isStatusChange 
+        ? (validatedData.isActive ? "USER_ACTIVATE" : "USER_DEACTIVATE")
+        : "UPDATE";
+
+      await getActivityTracker().trackActivity(action, "user", context, {
+        resourceId: userId,
+        description: isStatusChange 
+          ? `${validatedData.isActive ? 'Activated' : 'Deactivated'} user: ${updatedUser.name} (${updatedUser.email})`
+          : `Updated user: ${updatedUser.name} (${updatedUser.email})`,
+        metadata: {
+          userId: userId,
+          userName: updatedUser.name,
+          userEmail: updatedUser.email,
+          updatedFields: Object.keys(validatedData),
+          previousData: {
+            email: existingUser.email,
+            name: existingUser.name,
+            role: existingUser.role,
+            isActive: existingUser.isActive,
+          },
+          newData: {
+            email: updatedUser.email,
+            name: updatedUser.name,
+            role: updatedUser.role,
+            isActive: updatedUser.isActive,
+          },
+          isStatusChange,
+        },
+        severity: isStatusChange ? "WARN" : "INFO",
+        tags: isStatusChange 
+          ? ["user-management", "admin-action", "status-change", validatedData.isActive ? "activation" : "deactivation"]
+          : ["user-management", "admin-action"],
+      });
+
+      return NextResponse.json(updatedUser);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -247,6 +292,29 @@ export const DELETE = withAdminAuth(
           name: true,
           isActive: true,
         },
+      });
+
+      // Track user deletion activity
+      const context = ActivityEventFactory.createContext(req, {
+        userId: adminUser.id,
+        source: "api",
+      });
+
+      await getActivityTracker().trackActivity("DELETE", "user", context, {
+        resourceId: userId,
+        description: `Deleted user: ${existingUser.name} (${existingUser.email})`,
+        metadata: {
+          userId: userId,
+          userName: existingUser.name,
+          userEmail: existingUser.email,
+          userRole: existingUser.role,
+          hadActiveBookings: activeBookings > 0,
+          totalBookings: existingUser._count.bookings,
+          deletedAt: new Date().toISOString(),
+          softDelete: true,
+        },
+        severity: "WARN",
+        tags: ["user-management", "admin-action", "deletion", "soft-delete"],
       });
 
       return NextResponse.json({

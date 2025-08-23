@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { getActivityTracker } from "@/lib/activity-tracker";
+import { ActivityEventFactory } from "@/lib/events/factory";
 
 // Validation schema for car creation/update
 const carSchema = z.object({
@@ -168,6 +170,27 @@ export async function POST(req: NextRequest) {
         ...validatedData,
         features: JSON.stringify(validatedData.features || []),
       },
+    });
+
+    // Track car creation activity
+    const context = ActivityEventFactory.createContext(req, {
+      userId: session.user.id,
+      source: "api",
+    });
+
+    await getActivityTracker().trackActivity("CREATE", "car", context, {
+      resourceId: car.id.toString(),
+      description: `Created new car: ${car.make} ${car.model} (${car.year})`,
+      metadata: {
+        carMake: car.make,
+        carModel: car.model,
+        carYear: car.year,
+        location: car.location,
+        pricePerDay: car.pricePerDay,
+        features: validatedData.features || [],
+      },
+      severity: "INFO",
+      tags: ["car-management", "admin-action"],
     });
 
     return NextResponse.json(

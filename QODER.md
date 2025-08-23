@@ -7,14 +7,15 @@
 3. [Technology Stack](#technology-stack)
 4. [Directory Structure](#directory-structure)
 5. [Features](#features)
-6. [Components Documentation](#components-documentation)
-7. [Data Models](#data-models)
-8. [RBAC/ABAC System](#rbacabac-system)
-9. [Admin Management System](#admin-management-system)
-10. [Development Setup](#development-setup)
-11. [Current Limitations](#current-limitations)
-12. [Future Enhancements](#future-enhancements)
-13. [Code Quality & Standards](#code-quality--standards)
+6. [Annotation-Based Event Tracking System](#annotation-based-event-tracking-system)
+7. [Components Documentation](#components-documentation)
+8. [Data Models](#data-models)
+9. [RBAC/ABAC System](#rbacabac-system)
+10. [Admin Management System](#admin-management-system)
+11. [Development Setup](#development-setup)
+12. [Current Limitations](#current-limitations)
+13. [Future Enhancements](#future-enhancements)
+14. [Code Quality & Standards](#code-quality--standards)
 
 ## Project Overview
 
@@ -430,6 +431,233 @@ car-sharing-app/
 - `GET /api/admin/rbac/users/[id]/roles` - Fetch user roles (admin only)
 - `POST /api/admin/rbac/users/[id]/roles` - Assign role to user (admin only)
 - `DELETE /api/admin/rbac/users/[id]/roles/[roleId]` - Remove role from user (admin only)
+
+## Annotation-Based Event Tracking System
+
+The car-sharing application features a comprehensive annotation-based event tracking system that provides declarative, type-safe activity monitoring across the entire application.
+
+### Overview
+
+The annotation system allows developers to add tracking capabilities to methods and API routes using TypeScript decorators and higher-order functions. It automatically captures user activities, system events, and performance metrics without cluttering business logic.
+
+### Key Features
+
+- **Declarative Tracking**: Use simple decorators to add tracking to any method
+- **Type Safety**: Full TypeScript support with proper type inference
+- **Security Awareness**: Built-in PII detection and data sanitization
+- **Performance Optimization**: Configurable tracking with minimal overhead
+- **Flexible Configuration**: Route-based inclusion/exclusion patterns
+- **Integration Ready**: Seamless integration with existing activity tracker
+
+### Core Components
+
+#### Decorators (`/lib/annotations/decorators.ts`)
+
+Provides a comprehensive set of tracking decorators:
+
+```typescript
+// Basic tracking
+@Track({ action: 'READ', resource: 'car' })
+async getCar(id: string) { /* ... */ }
+
+// Authentication tracking
+@TrackAuth({ action: 'auth.login' })
+async login(credentials: LoginData) { /* ... */ }
+
+// Resource-specific tracking
+@TrackResource({ resource: 'booking', action: 'CREATE' })
+async createBooking(data: BookingData) { /* ... */ }
+
+// Conditional tracking
+@TrackConditional({ 
+  condition: (result) => result.success,
+  action: 'PAYMENT_SUCCESS' 
+})
+async processPayment(data: PaymentData) { /* ... */ }
+```
+
+#### Available Decorators
+
+- `@Track` - General purpose tracking
+- `@TrackAuth` - Authentication and authorization events
+- `@TrackResource` - Resource-specific operations
+- `@TrackBooking` - Booking-related activities
+- `@TrackSecurity` - Security-sensitive operations
+- `@TrackAdmin` - Administrative actions
+- `@TrackPerformance` - Performance monitoring
+- `@TrackError` - Error tracking and logging
+- `@TrackConditional` - Conditional tracking based on results
+- `@NoTrack` - Explicitly disable tracking
+- `@TrackClass` - Class-level tracking configuration
+
+#### API Route Middleware (`/lib/annotations/middleware.ts`)
+
+Provides middleware for automatic API route tracking:
+
+```typescript
+// Configure middleware
+configureAnnotationMiddleware({
+  enabled: true,
+  trackAllRoutes: true,
+  excludeRoutes: ['/api/health', '/api/metrics'],
+  includeRoutes: ['/api/cars/*', '/api/bookings/*'],
+  defaultAction: 'API_REQUEST'
+});
+
+// Use with API routes
+export const POST = withAnnotationTracking(
+  async (req: NextRequest) => {
+    // Your API logic here
+    return NextResponse.json({ success: true });
+  },
+  {
+    action: 'CREATE_BOOKING',
+    resource: 'booking',
+    extractResourceId: (req) => req.url.split('/').pop()
+  }
+);
+
+// Use decorator on route handlers
+@TrackApiRoute({ 
+  action: 'GET_CARS', 
+  resource: 'car',
+  tags: ['api', 'cars'] 
+})
+export async function GET(req: NextRequest) {
+  // API logic
+}
+```
+
+#### Configuration System
+
+Flexible configuration options:
+
+```typescript
+interface AnnotationMiddlewareConfig {
+  enabled: boolean;
+  trackAllRoutes: boolean;
+  excludeRoutes: string[];
+  includeRoutes: string[];
+  defaultAction: string;
+  extractUserId?: (req: NextRequest) => string | null;
+  extractSessionId?: (req: NextRequest) => string | null;
+}
+```
+
+### Method Interception Engine (`/lib/annotations/interceptor.ts`)
+
+Automatic method interception with:
+- Pre/post execution hooks
+- Error handling and recovery
+- Performance timing
+- Context injection
+- Result transformation
+
+### Integration with Activity Tracker
+
+The annotation system seamlessly integrates with the existing activity tracking infrastructure:
+
+```typescript
+// Automatic integration
+const tracker = getActivityTracker();
+
+// Events are automatically routed to the activity tracker
+// with proper context, metadata, and timing information
+```
+
+### Security Features
+
+- **PII Detection**: Automatic detection and sanitization of sensitive data
+- **Data Filtering**: Configurable field exclusion for security
+- **Access Control**: Role-based tracking permissions
+- **Audit Trail**: Complete audit trail for compliance
+
+### Performance Optimizations
+
+- **Lazy Loading**: Decorators are loaded only when needed
+- **Batch Processing**: Events are batched for efficient processing
+- **Caching**: Metadata caching for improved performance
+- **Async Processing**: Non-blocking event emission
+
+### File Structure
+
+```
+lib/annotations/
+├── decorators.ts          # Core decorator implementations
+├── middleware.ts          # API route middleware
+├── interceptor.ts         # Method interception engine
+├── config.ts             # Configuration management
+├── types.ts              # TypeScript type definitions
+├── examples.ts           # Usage examples
+├── test-example.ts       # Test demonstrations
+└── README.md             # Comprehensive documentation
+```
+
+### Usage Examples
+
+#### Service Class Tracking
+
+```typescript
+class BookingService {
+  @Track({ action: 'READ', resource: 'booking' })
+  async getBooking(id: string) {
+    return await this.bookingRepository.findById(id);
+  }
+
+  @TrackBooking({ action: 'CREATE' })
+  async createBooking(data: BookingData) {
+    const booking = await this.bookingRepository.create(data);
+    return booking;
+  }
+
+  @TrackConditional({
+    condition: (result) => result.status === 'confirmed',
+    action: 'BOOKING_CONFIRMED'
+  })
+  async confirmBooking(id: string) {
+    return await this.bookingRepository.confirm(id);
+  }
+}
+```
+
+#### API Route Tracking
+
+```typescript
+// app/api/bookings/route.ts
+export const POST = withAnnotationTracking(
+  async (req: NextRequest) => {
+    const data = await req.json();
+    const booking = await bookingService.createBooking(data);
+    return NextResponse.json(booking);
+  },
+  {
+    action: 'CREATE_BOOKING',
+    resource: 'booking',
+    tags: ['api', 'booking', 'create']
+  }
+);
+```
+
+### Best Practices
+
+1. **Use Specific Actions**: Choose descriptive action names that clearly indicate the operation
+2. **Include Context**: Provide relevant context and metadata for better tracking
+3. **Handle Errors**: Use `@TrackError` for error-prone operations
+4. **Performance Monitoring**: Use `@TrackPerformance` for critical operations
+5. **Security Awareness**: Use `@TrackSecurity` for sensitive operations
+6. **Conditional Tracking**: Use `@TrackConditional` for result-dependent tracking
+
+### Testing
+
+The system includes comprehensive testing utilities:
+
+```typescript
+// Test the annotation system
+import { testAnnotationSystem } from '@/lib/annotations/test-example';
+
+// Run test scenarios
+await testAnnotationSystem();
+```
 
 ## Components Documentation
 
@@ -1356,6 +1584,46 @@ The implemented RBAC/ABAC system with 5 roles, 16 permissions, and 4 policy rule
 ---
 
 ## Recent Updates (Latest)
+
+### User Activity Tracking System (New)
+
+**Comprehensive Event-Driven Activity Tracking** (Completed)
+
+- ✅ Implemented async event-driven architecture with event emitters, processors, and listeners
+- ✅ Created comprehensive database schema with UserActivity, ActivityEvent, and ActivityMetrics tables
+- ✅ Built configurable activity tracking service with multiple tracking levels (minimal, standard, detailed, verbose)
+- ✅ Integrated automatic tracking middleware for API routes and page views with Next.js middleware
+- ✅ Developed React hooks and components for frontend activity tracking and user interaction monitoring
+- ✅ Created admin dashboard for viewing user activities, analytics, and system insights
+- ✅ Implemented data retention policies with automated cleanup and archiving capabilities
+- ✅ Added comprehensive API endpoints for activity tracking, analytics, and data management
+
+**Security & Audit Features** (Completed)
+
+- ✅ Enhanced security event tracking for unauthorized access attempts and suspicious activities
+- ✅ Comprehensive audit logging for admin actions and system changes
+- ✅ Real-time activity monitoring with configurable severity levels (DEBUG, INFO, WARN, ERROR, CRITICAL)
+- ✅ Privacy-compliant data masking for sensitive information (passwords, tokens, etc.)
+- ✅ Role-based access control for activity analytics and management features
+- ✅ Activity correlation and session tracking for comprehensive user journey analysis
+
+**Performance & Analytics** (Completed)
+
+- ✅ Async batch processing with configurable batch sizes and timeouts for optimal performance
+- ✅ Event queue management with retry logic and dead letter queue for failed events
+- ✅ Built-in metrics collection for throughput, error rates, and processing times
+- ✅ Advanced analytics with custom query support for business intelligence
+- ✅ Performance tracking including page load times, API response times, and user engagement metrics
+- ✅ Automated data retention with configurable policies based on severity, age, and data type
+
+**Technical Implementation** (Completed)
+
+- ✅ Event system architecture with TypeScript interfaces and type safety
+- ✅ Singleton pattern implementation for services with proper lifecycle management
+- ✅ Integration with existing RBAC/ABAC system for permission-based activity access
+- ✅ Comprehensive error handling with graceful degradation and recovery mechanisms
+- ✅ Database optimization with proper indexing and query optimization
+- ✅ Frontend integration with React hooks, HOCs, and specialized tracking components
 
 ### Email Verification & Customer Creation System (Enhanced)
 

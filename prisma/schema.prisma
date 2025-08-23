@@ -31,6 +31,7 @@ model User {
   bookings  Booking[]
   accounts  Account[]
   sessions  Session[]
+  activities UserActivity[]  // User activity tracking
   
   // ABAC attributes (JSON for flexibility)
   attributes String? // JSON string for user attributes
@@ -309,4 +310,183 @@ enum TokenStatus {
   EXPIRED
   FAILED
   REVOKED
+}
+
+// User Activity Tracking Models
+model UserActivity {
+  id            String        @id @default(cuid())
+  userId        String?
+  sessionId     String?
+  
+  // Activity details
+  action        ActivityAction
+  resource      String        // e.g., "user", "car", "booking", "admin"
+  resourceId    String?       // ID of the resource being acted upon
+  description   String?       // Human readable description
+  
+  // Context information
+  ipAddress     String?
+  userAgent     String?
+  referer       String?
+  method        String?       // HTTP method (GET, POST, PUT, DELETE)
+  endpoint      String?       // API endpoint or page path
+  
+  // Request/Response data
+  requestData   String?       // JSON string of request data
+  responseData  String?       // JSON string of response data
+  statusCode    Int?          // HTTP status code
+  
+  // Metadata and tags
+  metadata      String?       // Additional JSON metadata
+  tags          String?       // Comma-separated tags for categorization
+  severity      ActivitySeverity @default(INFO)
+  
+  // Timing information
+  duration      Int?          // Request duration in milliseconds
+  timestamp     DateTime      @default(now())
+  
+  // Relationships
+  user          User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  @@index([userId, timestamp])
+  @@index([action, timestamp])
+  @@index([resource, timestamp])
+  @@index([timestamp])
+  @@index([severity, timestamp])
+  @@index([sessionId])
+  @@map("user_activities")
+}
+
+model ActivityEvent {
+  id            String        @id @default(cuid())
+  eventType     String        // e.g., "user.login", "car.created", "booking.cancelled"
+  eventCategory EventCategory @default(USER_ACTION)
+  
+  // Event source
+  source        String?       // "web", "api", "system", "admin"
+  sourceId      String?       // ID of the source (user, system, etc.)
+  
+  // Event data
+  payload       String?       // JSON event payload
+  correlationId String?       // For tracking related events
+  
+  // Processing status
+  status        EventStatus   @default(PENDING)
+  processedAt   DateTime?
+  retryCount    Int           @default(0)
+  maxRetries    Int           @default(3)
+  lastError     String?       // Last processing error
+  
+  // Timing
+  timestamp     DateTime      @default(now())
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  @@index([eventType, timestamp])
+  @@index([status, timestamp])
+  @@index([correlationId])
+  @@index([createdAt])
+  @@map("activity_events")
+}
+
+model ActivityMetrics {
+  id            String        @id @default(cuid())
+  
+  // Metric details
+  metricType    String        // e.g., "daily_logins", "car_views", "booking_conversions"
+  metricValue   Float
+  metricUnit    String?       // "count", "percentage", "duration_ms"
+  
+  // Dimensions
+  dimensions    String?       // JSON string for metric dimensions
+  
+  // Time period
+  period        MetricPeriod  @default(DAILY)
+  periodStart   DateTime
+  periodEnd     DateTime
+  
+  // Metadata
+  metadata      String?       // Additional metric metadata
+  
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  @@index([metricType, periodStart])
+  @@index([period, periodStart])
+  @@index([periodStart, periodEnd])
+  @@map("activity_metrics")
+}
+
+enum ActivityAction {
+  // Authentication actions
+  LOGIN
+  LOGOUT
+  REGISTER
+  PASSWORD_RESET
+  EMAIL_VERIFY
+  
+  // CRUD operations
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  
+  // Booking actions
+  BOOK
+  CANCEL_BOOKING
+  CONFIRM_BOOKING
+  COMPLETE_BOOKING
+  
+  // Admin actions
+  ADMIN_LOGIN
+  USER_PROMOTE
+  USER_DEMOTE
+  USER_ACTIVATE
+  USER_DEACTIVATE
+  ROLE_ASSIGN
+  ROLE_REMOVE
+  
+  // System actions
+  SEARCH
+  FILTER
+  EXPORT
+  IMPORT
+  BACKUP
+  SYSTEM_ERROR
+  
+  // Custom actions
+  CUSTOM
+}
+
+enum ActivitySeverity {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+  CRITICAL
+}
+
+enum EventCategory {
+  USER_ACTION
+  SYSTEM_EVENT
+  SECURITY_EVENT
+  PERFORMANCE_EVENT
+  BUSINESS_EVENT
+}
+
+enum EventStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  RETRYING
+  DISCARDED
+}
+
+enum MetricPeriod {
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
 }

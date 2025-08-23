@@ -21,54 +21,71 @@ async function verifyMigrationComplete(): Promise<boolean> {
   console.log("🔍 Verifying migration completeness...");
 
   try {
-    // Check if all activation tokens have been migrated
-    const usersWithTokens = await prisma.user.findMany({
-      where: {
-        AND: [
-          { activationToken: { not: null } },
-          { activationTokenExpires: { not: null } },
-        ],
-      },
-      select: {
-        id: true,
-        email: true,
-        activationToken: true,
-        activationTokenExpires: true,
-      },
-    });
+    // Since the User model schema has been updated and no longer includes activation token fields,
+    // we'll check using raw SQL queries to see if the database columns still exist and have data
 
-    if (usersWithTokens.length === 0) {
-      console.log("✅ No users with activation tokens found - safe to proceed");
-      return true;
-    }
+    try {
+      // Try to check if any users still have activation tokens using raw query
+      const usersWithTokens = (await prisma.$queryRaw`
+        SELECT id, email, "activationToken", "activationTokenExpires" 
+        FROM "User" 
+        WHERE "activationToken" IS NOT NULL 
+           OR "activationTokenExpires" IS NOT NULL
+        LIMIT 10
+      `) as any[];
 
-    console.log(
-      `⚠️  Found ${usersWithTokens.length} users with activation tokens:`
-    );
-    for (const user of usersWithTokens) {
-      // Check if this token exists in verification_tokens
-      const verificationToken = await (
-        prisma as any
-      ).verificationToken.findFirst({
-        where: {
-          identifier: user.email,
-          token: user.activationToken,
-          type: "ACTIVATION_LINK",
-        },
-      });
-
-      if (!verificationToken) {
-        console.log(`❌ User ${user.email} has unmigrated activation token`);
-        return false;
-      } else {
-        console.log(`✅ User ${user.email} token found in verification_tokens`);
+      if (usersWithTokens.length === 0) {
+        console.log(
+          "✅ No users with activation tokens found - safe to proceed"
+        );
+        return true;
       }
-    }
 
-    console.log(
-      "✅ All activation tokens have been migrated - safe to proceed"
-    );
-    return true;
+      console.log(
+        `⚠️  Found ${usersWithTokens.length} users with activation tokens:`
+      );
+
+      for (const user of usersWithTokens) {
+        // Check if this token exists in verification_tokens
+        const verificationToken = await (
+          prisma as any
+        ).verificationToken.findFirst({
+          where: {
+            identifier: user.email,
+            token: user.activationToken,
+            type: "ACTIVATION_LINK",
+          },
+        });
+
+        if (!verificationToken) {
+          console.log(`❌ User ${user.email} has unmigrated activation token`);
+          return false;
+        } else {
+          console.log(
+            `✅ User ${user.email} token found in verification_tokens`
+          );
+        }
+      }
+
+      console.log(
+        "✅ All activation tokens have been migrated - safe to proceed"
+      );
+      return true;
+    } catch (rawQueryError: any) {
+      // If raw query fails because columns don't exist, cleanup is complete
+      if (
+        rawQueryError.message &&
+        rawQueryError.message.includes("column") &&
+        rawQueryError.message.includes("activationToken")
+      ) {
+        console.log(
+          "✅ Activation token columns have been removed from database"
+        );
+        console.log("✅ Database cleanup appears to be complete");
+        return true;
+      }
+      throw rawQueryError;
+    }
   } catch (error) {
     console.error("❌ Migration verification failed:", error);
     return false;
@@ -89,19 +106,7 @@ async function cleanupActivationTokenFields(): Promise<CleanupStats> {
   console.log("🧹 Starting activation token field cleanup...");
 
   try {
-    // Count users with activation token fields
-    const usersWithTokens = await prisma.user.count({
-      where: {
-        OR: [
-          { activationToken: { not: null } },
-          { activationTokenExpires: { not: null } },
-        ],
-      },
-    });
-
-    stats.usersWithTokens = usersWithTokens;
-
-    // Count verification tokens
+    // Count verification tokens first (this should always work)
     const verificationTokens = await (prisma as any).verificationToken.count({
       where: {
         type: "ACTIVATION_LINK",
@@ -109,38 +114,63 @@ async function cleanupActivationTokenFields(): Promise<CleanupStats> {
     });
 
     stats.verificationTokens = verificationTokens;
-
-    console.log(
-      `📊 Found ${stats.usersWithTokens} users with activation token fields`
-    );
     console.log(
       `📊 Found ${stats.verificationTokens} activation link verification tokens`
     );
 
-    if (stats.usersWithTokens === 0) {
-      console.log("✅ No activation token fields to clean up");
-      return stats;
+    // Try to check for users with activation token fields
+    try {
+      // First try using raw SQL to check if columns exist and have data
+      const usersWithTokensRaw = (await prisma.$queryRaw`
+        SELECT COUNT(*) as count
+        FROM "User" 
+        WHERE "activationToken" IS NOT NULL 
+           OR "activationTokenExpires" IS NOT NULL
+      `) as any[];
+
+      stats.usersWithTokens = Number(usersWithTokensRaw[0]?.count || 0);
+
+      console.log(
+        `📊 Found ${stats.usersWithTokens} users with activation token fields`
+      );
+
+      if (stats.usersWithTokens === 0) {
+        console.log("✅ No activation token fields to clean up");
+        return stats;
+      }
+
+      // Clear activation token fields from User table using raw SQL
+      const updateResult = await prisma.$executeRaw`
+        UPDATE "User" 
+        SET "activationToken" = NULL, "activationTokenExpires" = NULL
+        WHERE "activationToken" IS NOT NULL 
+           OR "activationTokenExpires" IS NOT NULL
+      `;
+
+      stats.fieldsCleaned = Number(updateResult);
+
+      console.log(
+        `✅ Cleaned activation token fields from ${stats.fieldsCleaned} users`
+      );
+    } catch (dbError: any) {
+      // If we get a column doesn't exist error, the fields have already been removed
+      if (
+        dbError.message &&
+        dbError.message.includes("column") &&
+        (dbError.message.includes("activationToken") ||
+          dbError.message.includes("activationTokenExpires"))
+      ) {
+        console.log(
+          "✅ Activation token columns have already been removed from database"
+        );
+        stats.usersWithTokens = 0;
+        stats.fieldsCleaned = 0;
+        return stats;
+      }
+
+      // Re-throw if it's a different error
+      throw dbError;
     }
-
-    // Clear activation token fields from User table
-    const updateResult = await prisma.user.updateMany({
-      where: {
-        OR: [
-          { activationToken: { not: null } },
-          { activationTokenExpires: { not: null } },
-        ],
-      },
-      data: {
-        activationToken: null,
-        activationTokenExpires: null,
-      },
-    });
-
-    stats.fieldsCleaned = updateResult.count;
-
-    console.log(
-      `✅ Cleaned activation token fields from ${stats.fieldsCleaned} users`
-    );
 
     return stats;
   } catch (error) {
@@ -157,14 +187,34 @@ async function verifyCleanup(): Promise<boolean> {
   console.log("\n🔍 Verifying cleanup completion...");
 
   try {
-    const remainingTokens = await prisma.user.count({
-      where: {
-        OR: [
-          { activationToken: { not: null } },
-          { activationTokenExpires: { not: null } },
-        ],
-      },
-    });
+    let remainingTokens = 0;
+
+    // Try to check for remaining tokens using raw SQL
+    try {
+      const remainingTokensRaw = (await prisma.$queryRaw`
+        SELECT COUNT(*) as count
+        FROM "User" 
+        WHERE "activationToken" IS NOT NULL 
+           OR "activationTokenExpires" IS NOT NULL
+      `) as any[];
+
+      remainingTokens = Number(remainingTokensRaw[0]?.count || 0);
+    } catch (dbError: any) {
+      // If columns don't exist, that means cleanup is complete
+      if (
+        dbError.message &&
+        dbError.message.includes("column") &&
+        (dbError.message.includes("activationToken") ||
+          dbError.message.includes("activationTokenExpires"))
+      ) {
+        console.log(
+          "✅ Activation token columns have been removed from database"
+        );
+        remainingTokens = 0;
+      } else {
+        throw dbError;
+      }
+    }
 
     if (remainingTokens > 0) {
       console.log(

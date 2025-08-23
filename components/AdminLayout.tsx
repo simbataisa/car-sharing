@@ -14,6 +14,7 @@ import {
   LogOut,
   Menu,
   X,
+  Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signOut } from "next-auth/react";
@@ -86,6 +87,12 @@ export function AdminLayout({
       href: "/admin/bookings",
       icon: Calendar,
       current: title === "Booking Management",
+    },
+    {
+      name: "Activity Tracking",
+      href: "/admin/activity",
+      icon: Activity,
+      current: title === "Activity Dashboard",
     },
     {
       name: "Settings",

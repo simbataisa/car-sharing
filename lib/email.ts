@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import crypto from "crypto";
 
 // Initialize Resend with fallback for development
 const resend = process.env.RESEND_API_KEY
@@ -340,7 +341,6 @@ export const generateOTP = (): string => {
 
 // Activation token utilities
 export const generateActivationToken = (): string => {
-  const crypto = require("crypto");
   return crypto.randomBytes(32).toString("hex");
 };
 

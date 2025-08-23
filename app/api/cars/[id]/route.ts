@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { getActivityTracker } from "@/lib/activity-tracker";
+import { ActivityEventFactory } from "@/lib/events/factory";
 
 // Validation schema for car update
 const carUpdateSchema = z.object({
@@ -162,6 +164,35 @@ export async function PUT(
       data: updateData,
     });
 
+    // Track car update activity
+    const context = ActivityEventFactory.createContext(req, {
+      userId: session.user.id,
+      source: "api",
+    });
+
+    await getActivityTracker().trackActivity("UPDATE", "car", context, {
+      resourceId: carId.toString(),
+      description: `Updated car: ${updatedCar.make} ${updatedCar.model} (${updatedCar.year})`,
+      metadata: {
+        carId: carId,
+        carMake: updatedCar.make,
+        carModel: updatedCar.model,
+        carYear: updatedCar.year,
+        updatedFields: Object.keys(validatedData),
+        previousData: {
+          make: existingCar.make,
+          model: existingCar.model,
+          year: existingCar.year,
+          location: existingCar.location,
+          pricePerDay: existingCar.pricePerDay,
+          available: existingCar.available,
+        },
+        newData: updateData,
+      },
+      severity: "INFO",
+      tags: ["car-management", "admin-action"],
+    });
+
     // Return car with parsed features
     const carWithFeatures = {
       ...updatedCar,
@@ -246,6 +277,28 @@ export async function DELETE(
 
     await prisma.car.delete({
       where: { id: carId },
+    });
+
+    // Track car deletion activity
+    const context = ActivityEventFactory.createContext(req, {
+      userId: session.user.id,
+      source: "api",
+    });
+
+    await getActivityTracker().trackActivity("DELETE", "car", context, {
+      resourceId: carId.toString(),
+      description: `Deleted car: ${existingCar.make} ${existingCar.model} (${existingCar.year})`,
+      metadata: {
+        carId: carId,
+        carMake: existingCar.make,
+        carModel: existingCar.model,
+        carYear: existingCar.year,
+        location: existingCar.location,
+        pricePerDay: existingCar.pricePerDay,
+        deletedAt: new Date().toISOString(),
+      },
+      severity: "WARN",
+      tags: ["car-management", "admin-action", "deletion"],
     });
 
     return NextResponse.json(
