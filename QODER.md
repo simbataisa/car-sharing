@@ -111,15 +111,20 @@ The application follows a **client-server architecture** using Next.js App Route
 car-sharing-app/
 ├── app/                          # Next.js App Router pages
 │   ├── admin/                    # Admin dashboard pages
+│   │   ├── bookings/             # Booking management interface
 │   │   ├── login/                # Admin login page
 │   │   ├── users/                # User management interface
 │   │   └── page.tsx              # Admin dashboard overview
 │   ├── api/                      # API routes
 │   │   ├── admin/                # Admin API endpoints
+│   │   │   ├── email/            # Email verification APIs
+│   │   │   │   ├── send-otp/     # OTP email sending endpoint
+│   │   │   │   └── verify-otp/   # OTP verification endpoint
 │   │   │   ├── rbac/             # RBAC management APIs
 │   │   │   │   ├── roles/        # Role management endpoints
 │   │   │   │   └── users/        # User role assignment APIs
 │   │   │   └── users/            # User management APIs
+│   │   │       └── create-verified/ # Verified user creation endpoint
 │   │   ├── auth/                 # Authentication endpoints
 │   │   │   ├── [...nextauth]/    # NextAuth configuration
 │   │   │   ├── register/         # User registration API
@@ -158,6 +163,7 @@ car-sharing-app/
 │   ├── admin-auth.ts             # Admin authentication middleware
 │   ├── auth.ts                   # NextAuth configuration
 │   ├── data.ts                   # Mock car data and interfaces
+│   ├── email.ts                  # Email service with Resend integration
 │   ├── prisma.ts                 # Prisma client configuration
 │   ├── rbac.ts                   # RBAC/ABAC authorization utilities
 │   ├── store.ts                  # Zustand state management
@@ -240,6 +246,12 @@ car-sharing-app/
 
 - **Admin Authentication**: Separate admin login with hybrid role verification
 - **User Management Interface**: Complete CRUD operations for user accounts
+- **Customer Creation with Email Verification**: Create customer accounts on-the-fly during booking process
+  - Email verification using OTP (One-Time Password) sent via Resend API
+  - 3-step verification workflow: email input → OTP verification → account creation
+  - Professional email templates with branding and security features
+  - OTP security: 10-minute expiration, 3-attempt limit, secure generation
+  - Integration with booking workflow for seamless customer onboarding
 - **Car Management System**: Full car inventory management with enhanced modal dialogs
   - Add new cars with comprehensive form validation
   - Edit existing cars with improved modal interface
@@ -334,6 +346,14 @@ car-sharing-app/
 
 - **Dashboard Overview**: Statistics and recent user activity
 - **User Management** (`/admin/users`): Complete user CRUD interface
+- **Booking Management** (`/admin/bookings`): Comprehensive booking management with customer creation
+  - Complete booking CRUD operations with statistics and filtering
+  - Create bookings on behalf of customers with user selection
+  - "Create New Customer" functionality with email verification workflow
+  - Email verification using Resend API with OTP challenge
+  - 3-step modal process: email input → OTP verification → customer creation
+  - Professional email templates for OTP delivery and welcome messages
+  - Seamless integration with booking form after customer creation
 - **Car Management** (`/admin/cars`): Comprehensive car inventory management
   - Car listing with advanced filtering (location, availability, make)
   - Add new cars with detailed form including features management
@@ -379,6 +399,12 @@ car-sharing-app/
 - `GET /api/admin/users/[id]` - Fetch user details (admin only)
 - `PUT /api/admin/users/[id]` - Update user (admin only)
 - `DELETE /api/admin/users/[id]` - Soft delete user (admin only)
+
+#### Email Verification APIs
+
+- `POST /api/admin/email/send-otp` - Send OTP verification email (admin only)
+- `POST /api/admin/email/verify-otp` - Verify OTP code (admin only)
+- `POST /api/admin/users/create-verified` - Create user after email verification (admin only)
 
 #### RBAC/ABAC APIs
 
@@ -1055,6 +1081,10 @@ NEXTAUTH_URL=http://localhost:3000
 
 # Database Configuration
 DATABASE_URL=file:./dev.db
+
+# Email Configuration (Resend)
+RESEND_API_KEY=your-resend-api-key-here
+RESEND_FROM_EMAIL=noreply@yourdomain.com
 ```
 
 ### Available Scripts
@@ -1313,6 +1343,33 @@ The implemented RBAC/ABAC system with 5 roles, 16 permissions, and 4 policy rule
 
 ## Recent Updates (Latest)
 
+### Email Verification & Customer Creation System (New)
+
+**Email Verification Implementation** (Completed)
+
+- ✅ Implemented OTP-based email verification using Resend API
+- ✅ Added EmailVerification table to Prisma schema for OTP storage
+- ✅ Created comprehensive email service with professional HTML templates
+- ✅ Built 3-step verification workflow: email input → OTP verification → account creation
+- ✅ Enhanced booking management with "Create New Customer" functionality
+- ✅ Integrated email verification into admin booking workflow
+
+**Security Features** (Completed)
+
+- ✅ OTP expires in 10 minutes with secure 6-digit code generation
+- ✅ Maximum 3 verification attempts per OTP to prevent abuse
+- ✅ Email verification record expires after 1 hour
+- ✅ Comprehensive validation with Zod schemas for all email operations
+- ✅ Admin authentication required for all email verification endpoints
+
+**Email Templates & User Experience** (Completed)
+
+- ✅ Professional branded OTP verification email template
+- ✅ Welcome email with temporary password for new customers
+- ✅ Responsive modal interface with clear step-by-step workflow
+- ✅ Real-time validation and error handling throughout the process
+- ✅ Seamless integration with existing booking form
+
 ### Car Management System Enhancements
 
 **Modal System Fixes** (Completed)
@@ -1340,5 +1397,8 @@ The implemented RBAC/ABAC system with 5 roles, 16 permissions, and 4 policy rule
 - ✅ Enhanced API endpoints for car management with proper error responses
 - ✅ Improved component organization and TypeScript typing
 - ✅ Better state management for modal and form interactions
+- ✅ Added Resend package for professional email delivery
+- ✅ Extended Prisma schema with EmailVerification model
+- ✅ Created comprehensive email service utilities
 
-The application now provides a fully functional admin car management interface with industry-standard accessibility and user experience features. Recent improvements to the car management system provide a seamless administrative experience with proper modal functionality and enhanced accessibility features.
+The application now provides a fully functional admin car management interface with industry-standard accessibility and user experience features, plus a complete email verification system for creating customer accounts during the booking process. The new email verification feature enables seamless customer onboarding with professional email delivery and secure OTP verification.

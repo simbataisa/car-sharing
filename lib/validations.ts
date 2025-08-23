@@ -148,6 +148,84 @@ export const userUpdateSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+// Booking Management Schemas (for admin)
+export const adminBookingCreateSchema = z
+  .object({
+    userId: z.string().cuid("Invalid user ID"),
+    carId: z.number().positive("Invalid car ID"),
+    startDate: z.string().datetime("Invalid start date format"),
+    endDate: z.string().datetime("Invalid end date format"),
+    totalPrice: z.number().positive("Total price must be positive"),
+    status: z
+      .enum(["PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"])
+      .default("PENDING"),
+  })
+  .refine(
+    (data) => {
+      const startDate = new Date(data.startDate);
+      const endDate = new Date(data.endDate);
+      return endDate > startDate;
+    },
+    {
+      message: "End date must be after start date",
+      path: ["endDate"],
+    }
+  );
+
+export const adminBookingUpdateSchema = z
+  .object({
+    status: z
+      .enum(["PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"])
+      .optional(),
+    startDate: z.string().datetime("Invalid start date format").optional(),
+    endDate: z.string().datetime("Invalid end date format").optional(),
+    totalPrice: z.number().positive("Total price must be positive").optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.startDate && data.endDate) {
+        const startDate = new Date(data.startDate);
+        const endDate = new Date(data.endDate);
+        return endDate > startDate;
+      }
+      return true;
+    },
+    {
+      message: "End date must be after start date",
+      path: ["endDate"],
+    }
+  );
+
+export const bookingFilterSchema = z.object({
+  search: z.string().optional(),
+  status: z
+    .enum(["all", "PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"])
+    .default("all"),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  page: z.number().min(1).default(1),
+  limit: z.number().min(1).max(100).default(10),
+  sortBy: z
+    .enum([
+      "createdAt",
+      "startDate",
+      "endDate",
+      "totalPrice",
+      "status",
+      "user",
+      "car",
+    ])
+    .default("createdAt"),
+  sortOrder: z.enum(["asc", "desc"]).default("desc"),
+});
+
+export const bulkBookingActionSchema = z.object({
+  bookingIds: z
+    .array(z.string().cuid())
+    .min(1, "At least one booking must be selected"),
+  action: z.enum(["confirm", "cancel", "delete"]),
+});
+
 // Contact/Support Schemas
 export const contactSchema = z.object({
   name: z
@@ -165,6 +243,27 @@ export const contactSchema = z.object({
     .max(1000, "Message must be less than 1000 characters"),
 });
 
+// Email Verification Schemas
+export const emailVerificationSchema = z.object({
+  email: z.string().email("Invalid email format"),
+});
+
+export const verifyOTPSchema = z.object({
+  email: z.string().email("Invalid email format"),
+  otp: z.string().length(6, "OTP must be 6 digits"),
+});
+
+// Admin User Creation Schemas
+export const adminCreateUserSchema = z.object({
+  name: z
+    .string()
+    .min(2, "Name must be at least 2 characters")
+    .max(50, "Name must be less than 50 characters"),
+  email: z.string().email("Invalid email format"),
+  sendWelcomeEmail: z.boolean().default(true),
+  role: z.enum(["USER", "ADMIN"]).default("USER"),
+});
+
 // Type exports
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type SignupFormData = z.infer<typeof signupSchema>;
@@ -173,6 +272,17 @@ export type SearchFormData = z.infer<typeof searchSchema>;
 export type CarFormData = z.infer<typeof carSchema>;
 export type UserUpdateFormData = z.infer<typeof userUpdateSchema>;
 export type ContactFormData = z.infer<typeof contactSchema>;
+export type AdminBookingCreateFormData = z.infer<
+  typeof adminBookingCreateSchema
+>;
+export type AdminBookingUpdateFormData = z.infer<
+  typeof adminBookingUpdateSchema
+>;
+export type BookingFilterFormData = z.infer<typeof bookingFilterSchema>;
+export type BulkBookingActionFormData = z.infer<typeof bulkBookingActionSchema>;
+export type EmailVerificationFormData = z.infer<typeof emailVerificationSchema>;
+export type VerifyOTPFormData = z.infer<typeof verifyOTPSchema>;
+export type AdminCreateUserFormData = z.infer<typeof adminCreateUserSchema>;
 
 // Utility validation functions
 export const validateEmail = (email: string): boolean => {

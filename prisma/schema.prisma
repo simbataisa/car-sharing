@@ -195,6 +195,19 @@ model VerificationToken {
   @@map("verificationtokens")
 }
 
+model EmailVerification {
+  id        String   @id @default(cuid())
+  email     String
+  otp       String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("email_verifications")
+}
+
 model Car {
   id          Int      @id @default(autoincrement())
   make        String

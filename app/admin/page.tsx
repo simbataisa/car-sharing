@@ -33,19 +33,17 @@ export default function AdminDashboard() {
         const carsResponse = await fetch("/api/cars");
         const carsData = await carsResponse.json();
 
-        // Fetch bookings (we'll need to create this endpoint)
-        const bookingsResponse = await fetch("/api/bookings");
+        // Fetch bookings (using the new admin API)
+        const bookingsResponse = await fetch("/api/admin/bookings?limit=1");
         const bookingsData = await bookingsResponse.json();
 
         setStats({
           totalUsers: usersData.pagination?.totalCount || 0,
           totalCars: Array.isArray(carsData) ? carsData.length : 0,
-          totalBookings: Array.isArray(bookingsData) ? bookingsData.length : 0,
-          activeBookings: Array.isArray(bookingsData)
-            ? bookingsData.filter(
-                (b: any) => b.status === "CONFIRMED" || b.status === "PENDING"
-              ).length
-            : 0,
+          totalBookings: bookingsData.statistics?.totalBookings || 0,
+          activeBookings:
+            (bookingsData.statistics?.statusBreakdown?.CONFIRMED || 0) +
+            (bookingsData.statistics?.statusBreakdown?.PENDING || 0),
           recentUsers: usersData.users || [],
         });
       } catch (error) {
