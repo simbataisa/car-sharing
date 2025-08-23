@@ -1,15 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAdminAuth } from "@/lib/admin-auth";
+import { adminBookingUpdateSchema } from "@/lib/validations";
 import { z } from "zod";
-
-// Validation schema for booking update
-const updateBookingSchema = z.object({
-  status: z.enum(["PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"]).optional(),
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
-  totalPrice: z.number().positive().optional(),
-});
 
 // GET /api/admin/bookings/[id] - Get specific booking
 export const GET = withAdminAuth(async (req: NextRequest, adminUser: any) => {
@@ -88,7 +81,17 @@ export const PUT = withAdminAuth(async (req: NextRequest, adminUser: any) => {
     }
 
     const body = await req.json();
-    const validatedData = updateBookingSchema.parse(body);
+    console.log("Booking update request body:", body);
+    const validatedData = adminBookingUpdateSchema.parse(body);
+
+    // Convert datetime-local format to ISO format for database storage
+    const updateData: any = { ...validatedData };
+    if (validatedData.startDate) {
+      updateData.startDate = new Date(validatedData.startDate).toISOString();
+    }
+    if (validatedData.endDate) {
+      updateData.endDate = new Date(validatedData.endDate).toISOString();
+    }
 
     // Check if booking exists
     const existingBooking = await prisma.booking.findUnique({
@@ -103,9 +106,9 @@ export const PUT = withAdminAuth(async (req: NextRequest, adminUser: any) => {
     }
 
     // If updating dates, validate them
-    if (validatedData.startDate && validatedData.endDate) {
-      const startDate = new Date(validatedData.startDate);
-      const endDate = new Date(validatedData.endDate);
+    if (updateData.startDate && updateData.endDate) {
+      const startDate = new Date(updateData.startDate);
+      const endDate = new Date(updateData.endDate);
 
       if (startDate >= endDate) {
         return NextResponse.json(
@@ -154,9 +157,9 @@ export const PUT = withAdminAuth(async (req: NextRequest, adminUser: any) => {
     }
 
     // Prevent certain status transitions
-    if (validatedData.status) {
+    if (updateData.status) {
       const currentStatus = existingBooking.status;
-      const newStatus = validatedData.status;
+      const newStatus = updateData.status;
 
       // Business rules for status transitions
       if (currentStatus === "COMPLETED" && newStatus !== "COMPLETED") {
@@ -177,7 +180,7 @@ export const PUT = withAdminAuth(async (req: NextRequest, adminUser: any) => {
     // Update the booking
     const updatedBooking = await prisma.booking.update({
       where: { id: bookingId },
-      data: validatedData,
+      data: updateData,
       include: {
         user: {
           select: {
@@ -203,6 +206,7 @@ export const PUT = withAdminAuth(async (req: NextRequest, adminUser: any) => {
     return NextResponse.json(updatedBooking);
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error("Validation error:", error.issues);
       return NextResponse.json(
         { error: "Validation failed", details: error.issues },
         { status: 400 }
@@ -211,7 +215,10 @@ export const PUT = withAdminAuth(async (req: NextRequest, adminUser: any) => {
 
     console.error("Error updating booking:", error);
     return NextResponse.json(
-      { error: "Failed to update booking" },
+      {
+        error: "Failed to update booking",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 }
     );
   }

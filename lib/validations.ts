@@ -153,8 +153,8 @@ export const adminBookingCreateSchema = z
   .object({
     userId: z.string().cuid("Invalid user ID"),
     carId: z.number().positive("Invalid car ID"),
-    startDate: z.string().datetime("Invalid start date format"),
-    endDate: z.string().datetime("Invalid end date format"),
+    startDate: z.string(),
+    endDate: z.string(),
     totalPrice: z.number().positive("Total price must be positive"),
     status: z
       .enum(["PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"])
@@ -164,10 +164,14 @@ export const adminBookingCreateSchema = z
     (data) => {
       const startDate = new Date(data.startDate);
       const endDate = new Date(data.endDate);
-      return endDate > startDate;
+      return (
+        !isNaN(startDate.getTime()) &&
+        !isNaN(endDate.getTime()) &&
+        endDate > startDate
+      );
     },
     {
-      message: "End date must be after start date",
+      message: "End date must be after start date and dates must be valid",
       path: ["endDate"],
     }
   );
@@ -177,8 +181,8 @@ export const adminBookingUpdateSchema = z
     status: z
       .enum(["PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"])
       .optional(),
-    startDate: z.string().datetime("Invalid start date format").optional(),
-    endDate: z.string().datetime("Invalid end date format").optional(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
     totalPrice: z.number().positive("Total price must be positive").optional(),
   })
   .refine(
@@ -186,12 +190,16 @@ export const adminBookingUpdateSchema = z
       if (data.startDate && data.endDate) {
         const startDate = new Date(data.startDate);
         const endDate = new Date(data.endDate);
-        return endDate > startDate;
+        return (
+          !isNaN(startDate.getTime()) &&
+          !isNaN(endDate.getTime()) &&
+          endDate > startDate
+        );
       }
       return true;
     },
     {
-      message: "End date must be after start date",
+      message: "End date must be after start date and dates must be valid",
       path: ["endDate"],
     }
   );

@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAdminAuth } from "@/lib/admin-auth";
+import {
+  adminBookingCreateSchema,
+  adminBookingUpdateSchema,
+} from "@/lib/validations";
 import { z } from "zod";
-
-// Validation schema for booking update
-const updateBookingSchema = z.object({
-  status: z.enum(["PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"]),
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
-  totalPrice: z.number().positive().optional(),
-});
 
 // GET /api/admin/bookings - Get all bookings with pagination and filtering
 export const GET = withAdminAuth(async (req: NextRequest, adminUser: any) => {
@@ -170,24 +166,17 @@ export const GET = withAdminAuth(async (req: NextRequest, adminUser: any) => {
 export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
   try {
     const body = await req.json();
+    const validatedData = adminBookingCreateSchema.parse(body);
 
-    // For admin booking creation, we need additional fields
-    const createBookingSchema = z.object({
-      userId: z.string().cuid("Invalid user ID"),
-      carId: z.number().positive("Invalid car ID"),
-      startDate: z.string().datetime("Invalid start date"),
-      endDate: z.string().datetime("Invalid end date"),
-      totalPrice: z.number().positive("Total price must be positive"),
-      status: z
-        .enum(["PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"])
-        .default("PENDING"),
-    });
-
-    const validatedData = createBookingSchema.parse(body);
-
-    // Validate dates
+    // Convert datetime-local format to ISO format for database storage
     const startDate = new Date(validatedData.startDate);
     const endDate = new Date(validatedData.endDate);
+
+    const bookingData = {
+      ...validatedData,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+    };
 
     if (startDate >= endDate) {
       return NextResponse.json(
@@ -260,7 +249,7 @@ export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
 
     // Create the booking
     const newBooking = await prisma.booking.create({
-      data: validatedData,
+      data: bookingData,
       include: {
         user: {
           select: {
