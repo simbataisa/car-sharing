@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAdminAuth } from "@/lib/admin-auth";
 import { verificationService } from "@/lib/verification";
 import { z } from "zod";
+import { withAnnotationTracking } from "@/lib/annotations/middleware";
 
 const querySchema = z.object({
   email: z.string().email().optional(),
@@ -19,7 +20,7 @@ const querySchema = z.object({
 });
 
 // GET /api/admin/verifications - Get verification history and statistics
-export const GET = withAdminAuth(async (req: NextRequest, adminUser: any) => {
+const getHandler = withAdminAuth(async (req: NextRequest, adminUser: any) => {
   try {
     const { searchParams } = new URL(req.url);
     const params = querySchema.parse({
@@ -56,4 +57,12 @@ export const GET = withAdminAuth(async (req: NextRequest, adminUser: any) => {
       { status: 500 }
     );
   }
+});
+
+// Export tracked handler
+export const GET = withAnnotationTracking(getHandler, {
+  action: "READ",
+  resource: "admin_verifications",
+  description: "Get verification history and statistics",
+  tags: ["admin", "verifications", "history", "stats"]
 });

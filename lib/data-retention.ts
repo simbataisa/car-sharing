@@ -5,6 +5,7 @@
 
 import { PrismaClient, EventStatus } from '@prisma/client';
 import { prisma } from './prisma';
+// Note: Service classes use manual tracking instead of decorators for better compatibility
 
 export interface RetentionPolicy {
   name: string;
@@ -99,7 +100,7 @@ export class DataRetentionService {
   }
 
   /**
-   * Add a custom retention policy
+   * Add a new retention policy
    */
   addPolicy(policy: RetentionPolicy): void {
     // Validate policy
@@ -116,7 +117,7 @@ export class DataRetentionService {
   }
 
   /**
-   * Remove a retention policy
+   * Remove a retention policy by name
    */
   removePolicy(policyName: string): boolean {
     const index = this.policies.findIndex(p => p.name === policyName);
@@ -135,7 +136,7 @@ export class DataRetentionService {
   }
 
   /**
-   * Execute cleanup based on retention policies
+   * Execute cleanup based on all configured policies
    */
   async executeCleanup(dryRun: boolean = false): Promise<CleanupStats> {
     const startTime = Date.now();

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { withAnnotationTracking } from "@/lib/annotations/middleware";
 
 const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -10,7 +11,7 @@ const registerSchema = z.object({
 });
 
 // POST /api/auth/register - Register new user
-export async function POST(req: NextRequest) {
+async function postHandler(req: NextRequest) {
   try {
     const body = await req.json();
     const validatedData = registerSchema.parse(body);
@@ -70,3 +71,11 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+// Export tracked handler
+export const POST = withAnnotationTracking(postHandler, {
+  action: "CREATE",
+  resource: "user_registration",
+  description: "User registration with email and password",
+  tags: ["auth", "registration"]
+});

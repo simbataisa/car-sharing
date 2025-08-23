@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { getActivityTracker } from "@/lib/activity-tracker";
 import { ActivityEventFactory } from "@/lib/events/factory";
+import { withAnnotationTracking } from '@/lib/annotations/middleware';
 
 // Validation schema for car creation/update
 const carSchema = z.object({
@@ -28,7 +29,7 @@ const carSchema = z.object({
 });
 
 // GET /api/cars - Get all cars
-export async function GET(req: NextRequest) {
+async function getHandler(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const location = searchParams.get("location");
@@ -109,7 +110,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/cars - Create new car (Admin only)
-export async function POST(req: NextRequest) {
+async function postHandler(req: NextRequest) {
   try {
     const session = await auth();
 
@@ -215,3 +216,18 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+// Export tracked handlers
+export const GET = withAnnotationTracking(getHandler, {
+  action: "READ",
+  resource: "cars",
+  description: "Get all cars with filtering",
+  tags: ["cars", "search", "filter"]
+});
+
+export const POST = withAnnotationTracking(postHandler, {
+  action: "CREATE",
+  resource: "cars",
+  description: "Create new car (Admin only)",
+  tags: ["cars", "create", "admin"]
+});

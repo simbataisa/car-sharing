@@ -21,6 +21,7 @@ import { getEventEmitter } from "./events/emitter";
 import { getEventFactory, ActivityEventFactory } from "./events/factory";
 import { getEventProcessor } from "./events/processor";
 import { prisma } from "./prisma";
+// Note: ActivityTrackingService itself doesn't use decorators to avoid circular dependencies
 
 export class ActivityTrackingService {
   private config: ActivityTrackingConfig;
@@ -568,9 +569,6 @@ export class ActivityTrackingService {
     if (this.config.excludeActions.includes(action)) return false;
 
     if (this.config.excludeResources.includes(resource)) return false;
-
-    if (context.endpoint && this.shouldExcludeEndpoint(context.endpoint))
-      return false;
 
     // Check tracking level
     if (this.config.trackingLevel === "minimal") {

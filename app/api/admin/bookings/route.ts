@@ -6,9 +6,10 @@ import {
   adminBookingUpdateSchema,
 } from "@/lib/validations";
 import { z } from "zod";
+import { withAnnotationTracking } from "@/lib/annotations/middleware";
 
 // GET /api/admin/bookings - Get all bookings with pagination and filtering
-export const GET = withAdminAuth(async (req: NextRequest, adminUser: any) => {
+const getHandler = withAdminAuth(async (req: NextRequest, adminUser: any) => {
   try {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -163,7 +164,7 @@ export const GET = withAdminAuth(async (req: NextRequest, adminUser: any) => {
 });
 
 // POST /api/admin/bookings - Create new booking (for admin use)
-export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
+const postHandler = withAdminAuth(async (req: NextRequest, adminUser: any) => {
   try {
     const body = await req.json();
     const validatedData = adminBookingCreateSchema.parse(body);
@@ -287,4 +288,19 @@ export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
       { status: 500 }
     );
   }
+});
+
+// Export tracked handlers
+export const GET = withAnnotationTracking(getHandler, {
+  action: "READ",
+  resource: "admin_bookings",
+  description: "Get all bookings with pagination and filtering",
+  tags: ["admin", "bookings", "list"]
+});
+
+export const POST = withAnnotationTracking(postHandler, {
+  action: "CREATE",
+  resource: "admin_bookings",
+  description: "Create new booking for admin use",
+  tags: ["admin", "bookings", "create"]
 });

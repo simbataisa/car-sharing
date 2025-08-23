@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { z } from "zod";
+import { withAnnotationTracking } from '@/lib/annotations/middleware';
 
 const createBookingSchema = z.object({
   carId: z.number().positive("Car ID must be a positive number"),
@@ -14,7 +15,7 @@ const createBookingSchema = z.object({
 });
 
 // GET /api/bookings - Get user's bookings
-export async function GET(req: NextRequest) {
+async function getHandler(req: NextRequest) {
   try {
     const session = await auth();
 
@@ -53,7 +54,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/bookings - Create new booking
-export async function POST(req: NextRequest) {
+async function postHandler(req: NextRequest) {
   try {
     const session = await auth();
 
@@ -129,3 +130,18 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+// Export tracked handlers
+export const GET = withAnnotationTracking(getHandler, {
+  action: "READ",
+  resource: "bookings",
+  description: "Get user's bookings",
+  tags: ["bookings", "user", "list"]
+});
+
+export const POST = withAnnotationTracking(postHandler, {
+  action: "CREATE",
+  resource: "bookings",
+  description: "Create new booking",
+  tags: ["bookings", "create", "reservation"]
+});

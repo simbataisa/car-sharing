@@ -7,8 +7,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getActivityTracker } from "@/lib/activity-tracker";
 import { getUserWithRoles } from "@/lib/rbac";
+import { withAnnotationTracking } from '@/lib/annotations/middleware';
 
-export async function GET(request: NextRequest) {
+async function getHandler(request: NextRequest) {
   try {
     const session = await auth();
 
@@ -80,7 +81,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST endpoint for custom analytics queries
-export async function POST(request: NextRequest) {
+async function postHandler(request: NextRequest) {
   try {
     const session = await auth();
 
@@ -333,3 +334,18 @@ async function executeCustomAnalyticsQuery(query: string, parameters: any) {
       throw new Error(`Unknown query type: ${query}`);
   }
 }
+
+// Export tracked handlers
+export const GET = withAnnotationTracking(getHandler, {
+  action: "READ",
+  resource: "activity_analytics",
+  description: "Get activity analytics and insights",
+  tags: ["activity", "analytics", "insights"]
+});
+
+export const POST = withAnnotationTracking(postHandler, {
+  action: "CREATE",
+  resource: "activity_analytics",
+  description: "Execute custom analytics queries",
+  tags: ["activity", "analytics", "custom", "admin"]
+});

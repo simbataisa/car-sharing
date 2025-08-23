@@ -304,7 +304,6 @@ export class AsyncEventProcessor {
 
     await prisma.userActivity.createMany({
       data: activities,
-      skipDuplicates: true,
     });
   }
 
@@ -335,7 +334,6 @@ export class AsyncEventProcessor {
 
     await prisma.activityEvent.createMany({
       data: activityEvents,
-      skipDuplicates: true,
     });
   }
 

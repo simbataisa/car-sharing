@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 import { getActivityTracker } from "@/lib/activity-tracker";
 import { ActivityEventFactory } from "@/lib/events/factory";
 import { ActivityAction, ActivitySeverity } from "@prisma/client";
+import { withAnnotationTracking } from '@/lib/annotations/middleware';
 
 interface ActivityTrackingRequest {
   activities: Array<{
@@ -27,7 +28,7 @@ interface ActivityTrackingRequest {
   }>;
 }
 
-export async function POST(request: NextRequest) {
+async function postHandler(request: NextRequest) {
   try {
     // Get session for user context
     const session = await auth();
@@ -146,7 +147,7 @@ export async function POST(request: NextRequest) {
 }
 
 // GET endpoint for activity history
-export async function GET(request: NextRequest) {
+async function getHandler(request: NextRequest) {
   try {
     const session = await auth();
 
@@ -193,3 +194,18 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+// Export tracked handlers
+export const POST = withAnnotationTracking(postHandler, {
+  action: "CREATE",
+  resource: "activity_tracking",
+  description: "Track user activities",
+  tags: ["activity", "tracking", "analytics"]
+});
+
+export const GET = withAnnotationTracking(getHandler, {
+  action: "READ",
+  resource: "activity_tracking",
+  description: "Get user activity history",
+  tags: ["activity", "history", "analytics"]
+});

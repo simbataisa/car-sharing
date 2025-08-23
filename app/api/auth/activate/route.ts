@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { verificationService } from "@/lib/verification";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { withAnnotationTracking } from "@/lib/annotations/middleware";
 
 const activationSchema = z
   .object({
@@ -16,7 +17,7 @@ const activationSchema = z
   });
 
 // POST /api/auth/activate - Activate user account with token
-export async function POST(req: NextRequest) {
+async function postHandler(req: NextRequest) {
   try {
     const body = await req.json();
     const validatedData = activationSchema.parse(body);
@@ -145,7 +146,7 @@ export async function POST(req: NextRequest) {
 }
 
 // GET /api/auth/activate?token=xxx - Validate activation token
-export async function GET(req: NextRequest) {
+async function getHandler(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const token = searchParams.get("token");
@@ -250,3 +251,18 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+// Export tracked handlers
+export const POST = withAnnotationTracking(postHandler, {
+  action: "CREATE",
+  resource: "user_activation",
+  description: "User account activation with token",
+  tags: ["auth", "activation"]
+});
+
+export const GET = withAnnotationTracking(getHandler, {
+  action: "READ",
+  resource: "activation_token",
+  description: "Validate activation token",
+  tags: ["auth", "validation"]
+});

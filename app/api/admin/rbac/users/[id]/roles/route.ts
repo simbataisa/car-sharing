@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { assignRoleToUser, removeRoleFromUser, authorize } from "@/lib/rbac";
 import { auth } from "@/lib/auth";
+import { withAnnotationTracking } from "@/lib/annotations/middleware";
 
 // POST /api/admin/rbac/users/[id]/roles - Assign role to user
-export async function POST(
+async function postHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -57,7 +58,7 @@ export async function POST(
 }
 
 // DELETE /api/admin/rbac/users/[id]/roles - Remove role from user
-export async function DELETE(
+async function deleteHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -105,3 +106,18 @@ export async function DELETE(
     );
   }
 }
+
+// Export tracked handlers
+export const POST = withAnnotationTracking(postHandler, {
+  action: "UPDATE",
+  resource: "admin_rbac_user_roles",
+  description: "Assign role to user",
+  tags: ["admin", "rbac", "users", "roles", "assign"]
+});
+
+export const DELETE = withAnnotationTracking(deleteHandler, {
+  action: "DELETE",
+  resource: "admin_rbac_user_roles",
+  description: "Remove role from user",
+  tags: ["admin", "rbac", "users", "roles", "remove"]
+});

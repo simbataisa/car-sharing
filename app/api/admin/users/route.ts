@@ -4,6 +4,7 @@ import { withAdminAuth } from "@/lib/admin-auth";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { verificationService } from "@/lib/verification";
+import { withAnnotationTracking } from "@/lib/annotations/middleware";
 
 // Validation schema for user creation/update
 const createUserSchema = z.object({
@@ -24,7 +25,7 @@ const updateUserSchema = z.object({
 });
 
 // GET /api/admin/users - Get all users with pagination and filtering
-export const GET = withAdminAuth(async (req: NextRequest, adminUser: any) => {
+const getHandler = withAdminAuth(async (req: NextRequest, adminUser: any) => {
   try {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -104,7 +105,7 @@ export const GET = withAdminAuth(async (req: NextRequest, adminUser: any) => {
 });
 
 // POST /api/admin/users - Create new user with activation link
-export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
+const postHandler = withAdminAuth(async (req: NextRequest, adminUser: any) => {
   try {
     const body = await req.json();
     const validatedData = createUserSchema.parse(body);
@@ -187,4 +188,19 @@ export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
       { status: 500 }
     );
   }
+});
+
+// Export tracked handlers
+export const GET = withAnnotationTracking(getHandler, {
+  action: "READ",
+  resource: "admin_users",
+  description: "Get all users with pagination and filtering",
+  tags: ["admin", "users", "list"]
+});
+
+export const POST = withAnnotationTracking(postHandler, {
+  action: "CREATE",
+  resource: "admin_users",
+  description: "Create new user with activation link",
+  tags: ["admin", "users", "create"]
 });

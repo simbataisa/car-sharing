@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { assignRoleToUser, removeRoleFromUser, authorize } from "@/lib/rbac";
 import { auth } from "@/lib/auth";
+import { withAnnotationTracking } from "@/lib/annotations/middleware";
 
 // GET /api/admin/rbac/roles - Get all roles
-export async function GET(request: NextRequest) {
+async function getHandler(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/admin/rbac/roles - Create new role
-export async function POST(request: NextRequest) {
+async function postHandler(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -118,3 +119,18 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// Export tracked handlers
+export const GET = withAnnotationTracking(getHandler, {
+  action: "READ",
+  resource: "admin_rbac_roles",
+  description: "Get all roles with permissions and users",
+  tags: ["admin", "rbac", "roles", "list"]
+});
+
+export const POST = withAnnotationTracking(postHandler, {
+  action: "CREATE",
+  resource: "admin_rbac_roles",
+  description: "Create new role with permissions",
+  tags: ["admin", "rbac", "roles", "create"]
+});

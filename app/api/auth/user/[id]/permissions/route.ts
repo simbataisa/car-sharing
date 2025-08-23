@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserWithRoles, getUserPermissions } from "@/lib/rbac";
+import { withAnnotationTracking } from "@/lib/annotations/middleware";
 
-export async function GET(
+async function getHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -51,3 +52,11 @@ export async function GET(
     );
   }
 }
+
+// Export tracked handler
+export const GET = withAnnotationTracking(getHandler, {
+  action: "READ",
+  resource: "user_permissions",
+  description: "Get user roles and permissions",
+  tags: ["auth", "rbac", "permissions"]
+});

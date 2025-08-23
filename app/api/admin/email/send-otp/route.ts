@@ -3,9 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { withAdminAuth } from "@/lib/admin-auth";
 import { emailVerificationSchema } from "@/lib/validations";
 import { verificationService } from "@/lib/verification";
+import { withAnnotationTracking } from "@/lib/annotations/middleware";
 
 // POST /api/admin/email/send-otp - Send OTP to email address
-export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
+const postHandler = withAdminAuth(async (req: NextRequest, adminUser: any) => {
   try {
     const body = await req.json();
     const validatedData = emailVerificationSchema.parse(body);
@@ -46,4 +47,12 @@ export const POST = withAdminAuth(async (req: NextRequest, adminUser: any) => {
     console.error("Error sending OTP:", error);
     return NextResponse.json({ error: "Failed to send OTP" }, { status: 500 });
   }
+});
+
+// Export tracked handler
+export const POST = withAnnotationTracking(postHandler, {
+  action: "CREATE",
+  resource: "admin_email_otp",
+  description: "Send OTP to email address for verification",
+  tags: ["admin", "email", "otp", "send"]
 });

@@ -9,6 +9,7 @@ import { getUserWithRoles } from "@/lib/rbac";
 import { getActivityTracker } from "@/lib/activity-tracker";
 import { getEventEmitter } from "@/lib/events/emitter";
 import { AppEvent, UserActivityEvent } from "@/lib/events/types";
+import { withAnnotationTracking } from '@/lib/annotations/middleware';
 
 // Store active SSE connections
 const activeConnections = new Map<
@@ -49,7 +50,7 @@ setInterval(() => {
 }, CLEANUP_INTERVAL);
 
 // SSE endpoint for real-time activity updates
-export async function GET(request: NextRequest) {
+async function getHandler(request: NextRequest) {
   try {
     const session = await auth();
 
@@ -276,7 +277,7 @@ function shouldSendEvent(
 }
 
 // POST endpoint for sending custom notifications
-export async function POST(request: NextRequest) {
+async function postHandler(request: NextRequest) {
   try {
     const session = await auth();
 
@@ -358,8 +359,30 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// Export tracked handlers
+export const GET = withAnnotationTracking(getHandler, {
+  action: "READ",
+  resource: "activity_live",
+  description: "Establish SSE connection for real-time activity updates",
+  tags: ["activity", "live", "sse", "realtime"]
+});
+
+export const POST = withAnnotationTracking(postHandler, {
+  action: "CREATE",
+  resource: "activity_live",
+  description: "Send custom notifications to live connections",
+  tags: ["activity", "live", "notification", "admin"]
+});
+
+export const DELETE = withAnnotationTracking(deleteHandler, {
+  action: "DELETE",
+  resource: "activity_live",
+  description: "Close all SSE connections (admin maintenance)",
+  tags: ["activity", "live", "maintenance", "admin"]
+});
+
 // GET connection status
-export async function DELETE(request: NextRequest) {
+async function deleteHandler(request: NextRequest) {
   try {
     const session = await auth();
 

@@ -8,9 +8,10 @@ import { auth } from '@/lib/auth';
 import { getUserWithRoles, type UserWithRoles } from '@/lib/rbac';
 import { getRetentionService } from '@/lib/data-retention';
 import type { RetentionPolicy } from '@/lib/data-retention';
+import { withAnnotationTracking } from '@/lib/annotations/middleware';
 
 // GET - Get retention statistics and policies
-export async function GET(request: NextRequest) {
+async function getHandler(request: NextRequest) {
   try {
     const session = await auth();
     
@@ -81,7 +82,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST - Execute cleanup or manage retention policies
-export async function POST(request: NextRequest) {
+async function postHandler(request: NextRequest) {
   try {
     const session = await auth();
     
@@ -207,7 +208,7 @@ export async function POST(request: NextRequest) {
 }
 
 // DELETE - Emergency cleanup (immediate deletion without archiving)
-export async function DELETE(request: NextRequest) {
+async function deleteHandler(request: NextRequest) {
   try {
     const session = await auth();
     
@@ -331,3 +332,25 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
+
+// Export tracked handlers
+export const GET = withAnnotationTracking(getHandler, {
+  action: "READ",
+  resource: "admin_activity_cleanup",
+  description: "Get retention statistics and policies",
+  tags: ["admin", "activity", "cleanup", "stats"]
+});
+
+export const POST = withAnnotationTracking(postHandler, {
+  action: "CREATE",
+  resource: "admin_activity_cleanup",
+  description: "Execute cleanup or manage retention policies",
+  tags: ["admin", "activity", "cleanup", "execute"]
+});
+
+export const DELETE = withAnnotationTracking(deleteHandler, {
+  action: "DELETE",
+  resource: "admin_activity_cleanup",
+  description: "Emergency cleanup with immediate deletion",
+  tags: ["admin", "activity", "cleanup", "emergency"]
+});
