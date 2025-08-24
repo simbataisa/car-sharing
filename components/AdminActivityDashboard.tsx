@@ -5,7 +5,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -110,6 +110,14 @@ export default function AdminActivityDashboard() {
     null
   );
   const [autoRefresh, setAutoRefresh] = useState(false);
+  
+  // Use ref to track current filters to avoid dependency issues
+  const filtersRef = useRef<ActivityFilters>(filters);
+  
+  // Update ref when filters change
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
 
   const pageSize = 50;
 
@@ -125,14 +133,16 @@ export default function AdminActivityDashboard() {
           offset: (page * pageSize).toString(),
         });
 
-        if (filters.startDate) params.append("startDate", filters.startDate);
-        if (filters.endDate) params.append("endDate", filters.endDate);
-        if (filters.actions?.length)
-          params.append("actions", filters.actions.join(","));
-        if (filters.resources?.length)
-          params.append("resources", filters.resources.join(","));
-        if (filters.severity?.length)
-          params.append("severity", filters.severity.join(","));
+        // Use current filters from ref
+        const currentFilters = filtersRef.current;
+        if (currentFilters.startDate) params.append("startDate", currentFilters.startDate);
+        if (currentFilters.endDate) params.append("endDate", currentFilters.endDate);
+        if (currentFilters.actions?.length)
+          params.append("actions", currentFilters.actions.join(","));
+        if (currentFilters.resources?.length)
+          params.append("resources", currentFilters.resources.join(","));
+        if (currentFilters.severity?.length)
+          params.append("severity", currentFilters.severity.join(","));
 
         const response = await fetch(`/api/activity/track?${params}`);
 
@@ -159,16 +169,18 @@ export default function AdminActivityDashboard() {
         setLoading(false);
       }
     },
-    [filters]
+    [] // Remove filters dependency
   );
 
   // Fetch analytics
   const fetchAnalytics = useCallback(async () => {
     try {
       const params = new URLSearchParams();
-      if (filters.startDate) params.append("startDate", filters.startDate);
-      if (filters.endDate) params.append("endDate", filters.endDate);
-      if (filters.userId) params.append("userId", filters.userId);
+      // Use current filters from ref
+      const currentFilters = filtersRef.current;
+      if (currentFilters.startDate) params.append("startDate", currentFilters.startDate);
+      if (currentFilters.endDate) params.append("endDate", currentFilters.endDate);
+      if (currentFilters.userId) params.append("userId", currentFilters.userId);
 
       const response = await fetch(`/api/activity/analytics?${params}`);
 
@@ -181,13 +193,13 @@ export default function AdminActivityDashboard() {
     } catch (err) {
       console.error("Error fetching analytics:", err);
     }
-  }, [filters]);
+  }, []); // Remove filters dependency
 
   // Initial load
   useEffect(() => {
     fetchActivities(0, true);
     fetchAnalytics();
-  }, [fetchActivities, fetchAnalytics]);
+  }, [fetchActivities, fetchAnalytics]); // Safe to use functions now
 
   // Auto-refresh
   useEffect(() => {
@@ -208,7 +220,7 @@ export default function AdminActivityDashboard() {
         setRefreshInterval(null);
       }
     }
-  }, [autoRefresh, fetchActivities, fetchAnalytics]);
+  }, [autoRefresh, fetchActivities, fetchAnalytics]); // Safe to use functions now
 
   // Apply filters
   const applyFilters = () => {

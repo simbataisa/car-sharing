@@ -4,6 +4,7 @@
  */
 
 import React from "react";
+import { AdminLayout } from "@/components/AdminLayout";
 import AdminActivityDashboard from "@/components/AdminActivityDashboard";
 import { Metadata } from "next";
 
@@ -14,8 +15,8 @@ export const metadata: Metadata = {
 
 export default function AdminActivityPage() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <AdminLayout title="Activity Dashboard">
       <AdminActivityDashboard />
-    </div>
+    </AdminLayout>
   );
 }

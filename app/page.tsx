@@ -23,9 +23,9 @@ export default function Home() {
         if (!response.ok) {
           throw new Error("Failed to fetch cars");
         }
-        const cars = await response.json();
+        const data = await response.json();
         // Get first 3 cars as featured
-        setFeaturedCars(cars.slice(0, 3));
+        setFeaturedCars(data.cars.slice(0, 3));
       } catch (error) {
         console.error("Error fetching cars:", error);
         setError("Failed to load featured cars");

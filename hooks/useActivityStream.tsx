@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { ActivityAction, ActivitySeverity } from "@prisma/client";
 
 export interface ActivityStreamMessage {
@@ -88,7 +88,7 @@ export function useActivityStream(options: ActivityStreamOptions = {}) {
   const reconnectAttemptsRef = useRef(0);
 
   // Build query string from filters
-  const buildQueryString = useCallback(() => {
+  const queryString = useMemo(() => {
     if (!filters) return "";
 
     const params = new URLSearchParams();
@@ -121,7 +121,6 @@ export function useActivityStream(options: ActivityStreamOptions = {}) {
     setState((prev) => ({ ...prev, connecting: true, error: null }));
 
     try {
-      const queryString = buildQueryString();
       const eventSource = new EventSource(`/api/activity/live${queryString}`);
       eventSourceRef.current = eventSource;
 
@@ -216,7 +215,7 @@ export function useActivityStream(options: ActivityStreamOptions = {}) {
       );
     }
   }, [
-    buildQueryString,
+    queryString,
     autoReconnect,
     maxReconnectAttempts,
     reconnectDelay,
@@ -300,7 +299,7 @@ export function useActivityStream(options: ActivityStreamOptions = {}) {
       mountedRef.current = false;
       disconnect();
     };
-  }, [buildQueryString]); // Only depend on buildQueryString which depends on filters
+  }, [queryString]); // Depend on queryString which depends on filters
 
   // Cleanup on unmount
   useEffect(() => {

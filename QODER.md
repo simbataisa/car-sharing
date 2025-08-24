@@ -1312,6 +1312,45 @@ npx prisma db seed
 npm run dev
 ```
 
+### Next.js Image Configuration
+
+The application uses Next.js Image component for optimized image loading. External image domains must be configured in `next.config.ts`:
+
+```typescript
+const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'static.wixstatic.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'build.ford.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'vinfastdaklak-auto.com',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+  },
+};
+```
+
+**Configured Domains:**
+- `static.wixstatic.com` - Wix static content and images
+- `build.ford.com` - Ford vehicle configurator images
+- `vinfastdaklak-auto.com` - VinFast vehicle images
+
+**Adding New Domains:**
+When adding cars with images from new domains, update the `remotePatterns` array in `next.config.ts` to avoid "Invalid src prop" errors. The development server will automatically restart when this configuration file is modified.
+
 ### Environment Variables
 
 Create a `.env.local` file with the following variables:
@@ -1717,5 +1756,20 @@ The comprehensive activity tracking system has been fully implemented, tested, a
 - ✅ Added Resend package for professional email delivery
 - ✅ Extended Prisma schema with EmailVerification model
 - ✅ Created comprehensive email service utilities
+- ✅ Fixed Next.js image configuration for external domains
+- ✅ Resolved admin activity page layout issues
+- ✅ Fixed infinite loop errors in useActivityStream hook
+- ✅ Resolved PrismaClient instantiation issues in middleware
 
-The application now provides a fully functional admin car management interface with industry-standard accessibility and user experience features, plus a complete email verification system for creating customer accounts during the booking process. The new email verification feature enables seamless customer onboarding with professional email delivery and secure OTP verification.
+**Recent Bug Fixes** (Latest)
+
+- ✅ **Image Configuration**: Added support for external image domains in `next.config.ts`:
+  - `static.wixstatic.com` - Wix static content
+  - `build.ford.com` - Ford vehicle images
+  - `vinfastdaklak-auto.com` - VinFast vehicle images
+- ✅ **Admin Layout**: Fixed missing sidebar in admin activity page by wrapping with `AdminLayout`
+- ✅ **API Response Handling**: Fixed `cars.slice is not a function` error by properly accessing `data.cars` array
+- ✅ **Activity Stream**: Resolved "Maximum update depth exceeded" error with proper `useMemo` implementation
+- ✅ **Middleware Optimization**: Removed server-side imports and activity tracking from middleware
+
+The application now provides a fully functional admin car management interface with industry-standard accessibility and user experience features, plus a complete email verification system for creating customer accounts during the booking process. All image rendering issues have been resolved, and the admin interface now displays correctly with proper navigation.

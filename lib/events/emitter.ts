@@ -237,7 +237,7 @@ export class ActivityEventEmitter implements EventEmitter {
   private getListenersForEvent(event: AppEvent): EventListener[] {
     const listeners: EventListener[] = [];
 
-    // Get regular listeners
+    // Get exact match listeners
     const eventListeners = this.listeners.get(event.type);
     if (eventListeners) {
       listeners.push(...Array.from(eventListeners.values()));
@@ -249,14 +249,35 @@ export class ActivityEventEmitter implements EventEmitter {
       listeners.push(...Array.from(wildcardListeners.values()));
     }
 
+    // Get pattern-based listeners (e.g., "auth.*", "resource.*")
+    for (const [pattern, patternListeners] of this.listeners.entries()) {
+      if (pattern.endsWith(".*")) {
+        const prefix = pattern.slice(0, -2); // Remove ".*"
+        if (event.type.startsWith(prefix + ".")) {
+          listeners.push(...Array.from(patternListeners.values()));
+        }
+      }
+    }
+
     // Get one-time listeners
     const oneTimeListeners = this.oneTimeListeners.get(event.type);
     if (oneTimeListeners) {
       listeners.push(...Array.from(oneTimeListeners.values()));
     }
 
-    // Sort by priority
-    return listeners.sort((a, b) => b.priority - a.priority);
+    // Get pattern-based one-time listeners
+    for (const [pattern, patternListeners] of this.oneTimeListeners.entries()) {
+      if (pattern.endsWith(".*")) {
+        const prefix = pattern.slice(0, -2); // Remove ".*"
+        if (event.type.startsWith(prefix + ".")) {
+          listeners.push(...Array.from(patternListeners.values()));
+        }
+      }
+    }
+
+    // Sort by priority and remove duplicates
+    const uniqueListeners = Array.from(new Set(listeners));
+    return uniqueListeners.sort((a, b) => b.priority - a.priority);
   }
 
   /**
