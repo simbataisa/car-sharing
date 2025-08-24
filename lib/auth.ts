@@ -74,6 +74,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     strategy: "jwt",
   },
   callbacks: {
+    async signIn({ user }) {
+      // Update lastLogin when user successfully signs in
+      if (user?.id) {
+        try {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { lastLogin: new Date() },
+          });
+        } catch (error) {
+          console.error("Failed to update lastLogin:", error);
+          // Don't block sign in if lastLogin update fails
+        }
+      }
+      return true;
+    },
     async jwt({ token, user }) {
       if (user && user.role && user.id) {
         token.role = user.role;
