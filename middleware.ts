@@ -56,11 +56,10 @@ export const config = {
   matcher: [
     "/admin/:path*",
     "/dashboard/:path*",
-    "/api/:path*",
     "/cars/:path*",
     "/login",
     "/signup",
     "/",
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|robots.txt).*)",
   ],
 };

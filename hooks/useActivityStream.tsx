@@ -113,8 +113,11 @@ export function useActivityStream(options: ActivityStreamOptions = {}) {
   const connect = useCallback(() => {
     if (!mountedRef.current) return;
 
+    console.log('useActivityStream - Starting connection to:', `/api/activity/live${queryString}`);
+
     // Close existing connection
     if (eventSourceRef.current) {
+      console.log('useActivityStream - Closing existing connection');
       eventSourceRef.current.close();
     }
 
@@ -123,10 +126,12 @@ export function useActivityStream(options: ActivityStreamOptions = {}) {
     try {
       const eventSource = new EventSource(`/api/activity/live${queryString}`);
       eventSourceRef.current = eventSource;
+      console.log('useActivityStream - EventSource created, waiting for connection...');
 
       eventSource.onopen = () => {
         if (!mountedRef.current) return;
 
+        console.log('useActivityStream - Connection opened successfully');
         reconnectAttemptsRef.current = 0;
         setState((prev) => ({
           ...prev,
@@ -175,6 +180,9 @@ export function useActivityStream(options: ActivityStreamOptions = {}) {
       eventSource.onerror = (event) => {
         if (!mountedRef.current) return;
 
+        console.log('useActivityStream - Connection error occurred:', event);
+        console.log('useActivityStream - EventSource readyState:', eventSource.readyState);
+        
         const error = new Error("SSE connection error");
 
         setState((prev) => ({

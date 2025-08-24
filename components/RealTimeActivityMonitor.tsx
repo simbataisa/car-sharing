@@ -63,6 +63,17 @@ export default function RealTimeActivityMonitor({ className }: RealTimeActivityM
     sendNotification,
   } = useAdminActivityStream(filters);
 
+  // Debug logging for connection state changes
+  useEffect(() => {
+    console.log('RealTimeActivityMonitor - Connection state changed:', {
+      connected,
+      connecting,
+      error,
+      activeConnections,
+      reconnectAttempts
+    });
+  }, [connected, connecting, error, activeConnections, reconnectAttempts]);
+
   // Error stream hook
   const {
     errorEvents,
@@ -171,11 +182,21 @@ export default function RealTimeActivityMonitor({ className }: RealTimeActivityM
               </Button>
 
               {connected ? (
-                <Button variant="outline" size="sm" onClick={disconnect}>
+                <Button variant="outline" size="sm" onClick={() => {
+                  console.log('RealTimeActivityMonitor - Disconnect button clicked');
+                  disconnect();
+                }}>
                   Disconnect
                 </Button>
               ) : (
-                <Button variant="outline" size="sm" onClick={reconnect}>
+                <Button variant="outline" size="sm" onClick={() => {
+                  console.log('RealTimeActivityMonitor - Connect button clicked, current state:', {
+                    connected,
+                    connecting,
+                    error
+                  });
+                  reconnect();
+                }}>
                   {connecting ? 'Connecting...' : 'Connect'}
                 </Button>
               )}
