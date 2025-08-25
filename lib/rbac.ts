@@ -224,9 +224,36 @@ export async function authorize(
       return { allowed: false, reason: "User not found or inactive" };
     }
 
-    // For now, allow all authenticated users
-    // TODO: Implement proper RBAC once schema issues are resolved
-    return { allowed: true };
+    // Get all user permissions
+    const permissions = getUserPermissions(user);
+    
+    // Check for exact permission match
+    const requiredPermission = `${resource}:${action}`;
+    const hasPermission = permissions.some(p => p.name === requiredPermission);
+    
+    if (hasPermission) {
+      return { allowed: true };
+    }
+    
+    // Check for wildcard permissions
+    const hasWildcardResource = permissions.some(p => p.name === `${resource}:*`);
+    const hasWildcardAction = permissions.some(p => p.name === `*:${action}`);
+    const hasFullWildcard = permissions.some(p => p.name === "*:*");
+    
+    if (hasWildcardResource || hasWildcardAction || hasFullWildcard) {
+      return { allowed: true };
+    }
+    
+    // Check for admin permissions (legacy support)
+    const hasAdminPermission = permissions.some(p => p.name === "admin:*" || p.name === "admin:admin");
+    if (hasAdminPermission && (resource === "admin" || action === "admin")) {
+      return { allowed: true };
+    }
+    
+    return { 
+      allowed: false, 
+      reason: `Missing required permission: ${requiredPermission}` 
+    };
   } catch (error) {
     console.error("Authorization error:", error);
     return { allowed: false, reason: "Authorization system error" };
@@ -245,6 +272,110 @@ export async function isUserActive(userId: string): Promise<boolean> {
     return user?.isActive ?? false;
   } catch (error) {
     console.error("Error checking user status:", error);
+    return false;
+  }
+}
+
+/**
+ * Check if a permission is a system permission that should not be modified
+ */
+export function isSystemPermission(permissionName: string): boolean {
+  const systemPermissions = [
+    'admin:*',
+    'admin:read',
+    'admin:write',
+    'admin:delete',
+    'system:*',
+    'rbac:*',
+    'rbac:read',
+    'rbac:write',
+    'rbac:delete'
+  ];
+  return systemPermissions.includes(permissionName);
+}
+
+/**
+ * Check if a permission is currently assigned to any roles or users
+ */
+export async function isPermissionInUse(permissionId: string): Promise<boolean> {
+  try {
+    const [roleCount, userCount] = await Promise.all([
+      prisma.rolePermission.count({
+        where: { permissionId }
+      }),
+      prisma.userPermission.count({
+        where: { permissionId }
+      })
+    ]);
+    return roleCount > 0 || userCount > 0;
+  } catch (error) {
+    console.error('Error checking permission usage:', error);
+    return true; // Err on the side of caution
+  }
+}
+
+/**
+ * Validate permission data for creation/update
+ */
+export function validatePermissionData(data: {
+  name: string;
+  resource: string;
+  action: string;
+  displayName?: string;
+}): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  
+  // Validate name format (resource:action)
+  if (!data.name.match(/^[a-zA-Z0-9_-]+:[a-zA-Z0-9_*-]+$/)) {
+    errors.push('Permission name must follow format "resource:action"');
+  }
+  
+  // Validate resource
+  if (!data.resource || data.resource.length < 2) {
+    errors.push('Resource must be at least 2 characters long');
+  }
+  
+  // Validate action
+  if (!data.action || data.action.length < 1) {
+    errors.push('Action must be at least 1 character long');
+  }
+  
+  // Validate name matches resource:action
+  if (data.name !== `${data.resource}:${data.action}`) {
+    errors.push('Permission name must match "resource:action" format');
+  }
+  
+  // Validate displayName if provided
+  if (data.displayName && data.displayName.length < 3) {
+    errors.push('Display name must be at least 3 characters long');
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+
+/**
+ * Check if user has super admin privileges
+ */
+export async function isSuperAdmin(userId: string): Promise<boolean> {
+  try {
+    const user = await getUserWithRoles(userId);
+    if (!user) return false;
+    
+    // Check if user has SUPER_ADMIN role
+    const hasSuperAdminRole = user.userRoles.some(
+      (userRole: any) => userRole.role.name === 'SUPER_ADMIN'
+    );
+    
+    // Check if user has admin:* permission
+    const permissions = getUserPermissions(user);
+    const hasAdminWildcard = permissions.some(p => p.name === 'admin:*');
+    
+    return hasSuperAdminRole || hasAdminWildcard;
+  } catch (error) {
+    console.error('Error checking super admin status:', error);
     return false;
   }
 }

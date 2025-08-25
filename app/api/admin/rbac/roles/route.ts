@@ -12,8 +12,8 @@ async function getHandler(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check authorization
-    const authResult = await authorize(session.user.id, "admin", "read");
+    // Check authorization - use 'access' action which maps to admin:access permission
+    const authResult = await authorize(session.user.id, "admin", "access");
     if (!authResult.allowed) {
       return NextResponse.json({ error: authResult.reason }, { status: 403 });
     }

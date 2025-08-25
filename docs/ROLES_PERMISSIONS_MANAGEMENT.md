@@ -50,6 +50,13 @@ The Roles & Permissions Management System is a comprehensive administrative inte
 
 ### Permission Management
 
+#### Permission CRUD Operations
+- **Create Permissions**: Add new permissions with resource:action format
+- **View Permissions**: Comprehensive listing with role/user associations
+- **Edit Permissions**: Modify permission details and metadata
+- **Delete Permissions**: Safe deletion with usage validation
+- **System Protection**: Prevents modification of critical system permissions
+
 #### Permission Matrix
 - Visual checkbox interface for permission assignment
 - Real-time updates when permissions change
@@ -61,6 +68,7 @@ The Roles & Permissions Management System is a comprehensive administrative inte
 - **Cars Management**: Manage vehicle inventory and details
 - **Bookings Management**: Handle reservation operations
 - **Admin Management**: Administrative system access
+- **RBAC Management**: Role and permission administration
 
 ### System Role Protection
 
@@ -88,6 +96,19 @@ The Roles & Permissions Management System is a comprehensive administrative inte
 - Modal-based role creation and editing
 - System role protection indicators
 - Responsive design with accessibility features
+- Navigation integration with permission management
+```
+
+#### Permission Management Component: `/app/admin/permissions/page.tsx`
+
+```typescript
+// Key features implemented:
+- Comprehensive permission listing with search and filtering
+- Permission CRUD operations with validation
+- Role and user association display
+- System permission protection
+- Resource-based grouping and organization
+- Real-time updates and error handling
 ```
 
 #### Key State Management
@@ -192,11 +213,83 @@ if (userCount > 0) {
 
 #### Permissions API: `/api/admin/rbac/permissions/route.ts`
 
+**GET** - Fetch all permissions with relationships
 ```typescript
-// Fetches all available permissions
+// Returns permissions with role and user associations
 const permissions = await prisma.permission.findMany({
-  orderBy: { name: 'asc' }
+  include: {
+    rolePermissions: {
+      include: {
+        role: {
+          select: {
+            id: true,
+            name: true,
+            displayName: true,
+          },
+        },
+      },
+    },
+    userPermissions: {
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    },
+  },
+  orderBy: [
+    { resource: "asc" },
+    { action: "asc" },
+  ],
 });
+```
+
+**POST** - Create new permission
+```typescript
+// Validates and creates permission with proper format
+const newPermission = await prisma.permission.create({
+  data: {
+    name: `${resource}:${action}`,
+    displayName,
+    description,
+    resource,
+    action,
+    isActive: true,
+  },
+});
+```
+
+**PUT** - Update existing permission
+```typescript
+// Updates permission with system protection
+if (isSystemPermission(existingPermission.name)) {
+  return NextResponse.json(
+    { error: 'Cannot modify system permissions' },
+    { status: 403 }
+  );
+}
+```
+
+**DELETE** - Delete permission
+```typescript
+// Validates deletion constraints
+if (isSystemPermission(existingPermission.name)) {
+  return NextResponse.json(
+    { error: 'Cannot delete system permissions' },
+    { status: 403 }
+  );
+}
+
+if (await isPermissionInUse(permissionId)) {
+  return NextResponse.json(
+    { error: 'Cannot delete permission that is currently in use' },
+    { status: 400 }
+  );
+}
 ```
 
 #### Role Permissions API: `/api/admin/rbac/roles/[id]/permissions/route.ts`
@@ -397,6 +490,22 @@ model RolePermission {
 2. **Cannot Delete Role with Users**: Remove users from role first
 3. **Permission Changes Not Reflected**: Check browser cache and refresh
 4. **Access Denied**: Ensure user has ADMIN or SUPER_ADMIN role
+5. **TypeError: permissions.map is not a function**: Fixed - API response structure mismatch
+6. **403 Forbidden on API calls**: Fixed - Authorization permission mismatch
+
+### Recent Fixes
+
+#### TypeError in Permission Management (Fixed)
+**Issue**: Frontend component expected array but API returned object with `permissions` property
+**Solution**: Updated frontend to use `data.permissions || []` instead of `data`
+**Location**: `/app/admin/permissions/page.tsx` - `fetchPermissions` function
+
+#### Authorization Permission Mismatch (Fixed)
+**Issue**: API checked for `admin:read` but database only had `admin:access` permission
+**Solution**: Updated API authorization checks from `admin:read` to `admin:access`
+**Affected Files**: 
+- `/app/api/admin/rbac/permissions/route.ts`
+- `/app/api/admin/rbac/roles/route.ts`
 
 ### Debug Steps
 
@@ -405,6 +514,8 @@ model RolePermission {
 3. Confirm database state using Prisma Studio
 4. Review server logs for backend errors
 5. Validate user session and permissions
+6. Check API response structure matches frontend expectations
+7. Verify permission names in database match API authorization checks
 
 ## Conclusion
 

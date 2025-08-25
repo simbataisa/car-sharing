@@ -899,6 +899,26 @@ The application implements a comprehensive **Role-Based Access Control (RBAC)** 
 
 ### Permission System
 
+#### Permission Management Interface
+
+**Comprehensive Permission CRUD Operations**
+
+- **Create Permissions**: Add new permissions with resource:action format validation
+- **View Permissions**: Comprehensive listing with role and user associations
+- **Edit Permissions**: Modify permission details and metadata
+- **Delete Permissions**: Safe deletion with usage validation and system protection
+- **Search and Filter**: Advanced filtering by resource, action, and usage status
+- **System Protection**: Prevents modification of critical system permissions
+
+**Permission Management Features**
+
+- Real-time permission listing with role/user associations
+- Resource-based grouping and organization
+- Permission usage tracking and validation
+- Integration with role management interface
+- Navigation tabs for seamless admin workflow
+- Responsive design with accessibility features
+
 #### Core Permissions
 
 **User Management**
@@ -928,6 +948,13 @@ The application implements a comprehensive **Role-Based Access Control (RBAC)** 
 - `admin:settings` - Modify system configuration
 - `admin:reports` - Access system reports and analytics
 - `admin:audit` - View and manage audit logs
+
+**RBAC Management**
+
+- `rbac:read` - View roles and permissions
+- `rbac:write` - Create and modify roles and permissions
+- `rbac:delete` - Delete roles and permissions
+- `rbac:admin` - Full RBAC system management
 
 ### Role Hierarchy
 
@@ -993,6 +1020,49 @@ The application implements a comprehensive **Role-Based Access Control (RBAC)** 
 - **Effect**: DENY
 - **Description**: Regular users can only create bookings during business hours
 - **Priority**: 300
+
+### Permission Management API
+
+#### Endpoints
+
+**GET /api/admin/rbac/permissions**
+
+- Fetches all permissions with role and user associations
+- Returns grouped permissions by resource
+- Includes usage statistics and metadata
+- Requires `rbac:read` permission
+
+**POST /api/admin/rbac/permissions**
+
+- Creates new permissions with validation
+- Validates resource:action format
+- Prevents duplicate permission creation
+- Requires `rbac:write` permission
+
+**PUT /api/admin/rbac/permissions/[id]**
+
+- Updates existing permission details
+- System permission protection
+- Validates permission format and uniqueness
+- Requires `rbac:write` permission
+
+**DELETE /api/admin/rbac/permissions/[id]**
+
+- Safely deletes permissions with usage checks
+- Prevents deletion of permissions in use
+- System permission protection
+- Requires `rbac:delete` permission
+
+#### Frontend Component
+
+**Permission Management Interface (`/app/admin/permissions/page.tsx`)**
+
+- Comprehensive permission listing with search and filtering
+- CRUD operations with proper validation and error handling
+- Resource-based grouping and organization
+- Integration with role management through navigation tabs
+- Real-time updates and responsive design
+- System permission protection and usage validation
 
 ### Authorization Library (`/lib/rbac.ts`)
 
@@ -1762,6 +1832,12 @@ The comprehensive activity tracking system has been fully implemented, tested, a
 - ✅ Resolved PrismaClient instantiation issues in middleware
 
 **Recent Bug Fixes** (Latest)
+
+- ✅ **Permission Management TypeError Fix**: Resolved `TypeError: permissions.map is not a function` by updating frontend component to correctly extract permissions array from API response object
+- ✅ **Permission API Authorization Fix**: Fixed `403 Forbidden` error by correcting permission requirement from `admin:read` to `rbac:read` in permissions API endpoint
+- ✅ **Permission CRUD Implementation**: Completed full permission management system with create, read, update, delete operations and proper validation
+- ✅ **System Permission Protection**: Added safeguards to prevent modification or deletion of critical system permissions
+- ✅ **Permission Usage Validation**: Implemented checks to prevent deletion of permissions currently in use by roles or users
 
 - ✅ **Image Configuration**: Added support for external image domains in `next.config.ts`:
   - `static.wixstatic.com` - Wix static content
