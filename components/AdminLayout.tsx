@@ -95,6 +95,12 @@ export function AdminLayout({
       current: title === "Activity Dashboard",
     },
     {
+      name: "Roles & Permissions",
+      href: "/admin/roles",
+      icon: Shield,
+      current: title === "Roles Management",
+    },
+    {
       name: "Settings",
       href: "/admin/settings",
       icon: Settings,

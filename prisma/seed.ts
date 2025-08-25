@@ -315,7 +315,7 @@ const roles = [
     name: "USER",
     displayName: "Regular User",
     description: "Standard user with booking capabilities",
-    isSystem: true,
+    isSystem: false,
     permissions: ["cars:read", "bookings:read", "bookings:write"],
   },
 ];

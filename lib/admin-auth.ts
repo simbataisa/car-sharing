@@ -16,7 +16,18 @@ export async function adminAuthMiddleware(req: NextRequest) {
     // Get user from database to check current role and status
     const user = await prisma.user.findUnique({
       where: { id: token.sub },
-      select: { id: true, email: true, name: true, role: true, isActive: true },
+      select: { 
+        id: true, 
+        email: true, 
+        name: true, 
+        role: true, 
+        isActive: true,
+        userRoles: {
+          include: {
+            role: true
+          }
+        }
+      },
     });
 
     if (!user || !user.isActive) {
@@ -26,7 +37,11 @@ export async function adminAuthMiddleware(req: NextRequest) {
       );
     }
 
-    if (user.role !== "ADMIN") {
+    // Check for admin access - either legacy role or RBAC roles
+    const hasAdminAccess = user.role === "ADMIN" || 
+      user.userRoles.some(ur => ur.role.name === "ADMIN" || ur.role.name === "SUPER_ADMIN");
+
+    if (!hasAdminAccess) {
       return NextResponse.json(
         { error: "Admin access required" },
         { status: 403 }
@@ -77,10 +92,24 @@ export async function checkAdminRole(userId: string): Promise<boolean> {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { role: true, isActive: true },
+      select: { 
+        role: true, 
+        isActive: true,
+        userRoles: {
+          include: {
+            role: true
+          }
+        }
+      },
     });
 
-    return user?.role === "ADMIN" && user?.isActive === true;
+    if (!user?.isActive) {
+      return false;
+    }
+
+    // Check for admin access - either legacy role or RBAC roles
+    return user.role === "ADMIN" || 
+      user.userRoles.some(ur => ur.role.name === "ADMIN" || ur.role.name === "SUPER_ADMIN");
   } catch (error) {
     console.error("Error checking admin role:", error);
     return false;
