@@ -33,6 +33,12 @@ model User {
   sessions  Session[]
   activities UserActivity[]  // User activity tracking
   
+  // Depot management relationships
+  managedDepots     Depot[]       @relation("DepotManager")
+  initiatedTransfers CarTransfer[] @relation("TransferInitiator")
+  approvedTransfers  CarTransfer[] @relation("TransferApprover")
+  completedTransfers CarTransfer[] @relation("TransferCompleter")
+  
   // ABAC attributes (JSON for flexibility)
   attributes String? // JSON string for user attributes
   department String?
@@ -248,10 +254,16 @@ model Car {
   imageUrl    String
   available   Boolean  @default(true)
   features    String   // JSON string of features array
+  
+  // Depot relationship
+  depotId     String?
+  depot       Depot?   @relation(fields: [depotId], references: [id])
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
   bookings    Booking[]
+  transfers   CarTransfer[]
   
   @@map("cars")
 }
@@ -489,4 +501,86 @@ enum MetricPeriod {
   WEEKLY
   MONTHLY
   YEARLY
+}
+
+// Depot Management Models
+model Depot {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  address     String
+  city        String
+  state       String
+  zipCode     String
+  country     String   @default("US")
+  
+  // Capacity and management
+  capacity    Int      // Maximum number of cars
+  managerId   String?  // User ID of depot manager
+  manager     User?    @relation("DepotManager", fields: [managerId], references: [id])
+  
+  // Contact information
+  phone       String?
+  email       String?
+  
+  // Operational details
+  isActive    Boolean  @default(true)
+  operatingHours String? // JSON string for operating hours
+  
+  // Location coordinates (for future mapping features)
+  latitude    Float?
+  longitude   Float?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relationships
+  cars        Car[]
+  transfersFrom CarTransfer[] @relation("TransferFromDepot")
+  transfersTo   CarTransfer[] @relation("TransferToDepot")
+  
+  @@map("depots")
+}
+
+model CarTransfer {
+  id              String        @id @default(cuid())
+  carId           Int
+  fromDepotId     String?
+  toDepotId       String
+  
+  // Transfer details
+  reason          String?       // Reason for transfer
+  notes           String?       // Additional notes
+  status          TransferStatus @default(PENDING)
+  
+  // Personnel involved
+  initiatedBy     String        // User ID who initiated transfer
+  approvedBy      String?       // User ID who approved transfer
+  completedBy     String?       // User ID who completed transfer
+  
+  // Timing
+  scheduledDate   DateTime?     // When transfer is scheduled
+  startedAt       DateTime?     // When transfer actually started
+  completedAt     DateTime?     // When transfer was completed
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // Relationships
+  car             Car           @relation(fields: [carId], references: [id])
+  fromDepot       Depot?        @relation("TransferFromDepot", fields: [fromDepotId], references: [id])
+  toDepot         Depot         @relation("TransferToDepot", fields: [toDepotId], references: [id])
+  initiator       User          @relation("TransferInitiator", fields: [initiatedBy], references: [id])
+  approver        User?         @relation("TransferApprover", fields: [approvedBy], references: [id])
+  completer       User?         @relation("TransferCompleter", fields: [completedBy], references: [id])
+  
+  @@map("car_transfers")
+}
+
+enum TransferStatus {
+  PENDING
+  APPROVED
+  IN_TRANSIT
+  COMPLETED
+  CANCELLED
+  REJECTED
 }

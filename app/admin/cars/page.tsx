@@ -35,6 +35,13 @@ interface Car {
   features: string[];
   createdAt: string;
   updatedAt: string;
+  depot?: {
+    id: string;
+    name: string;
+    city: string;
+    state: string;
+    address: string;
+  };
   bookings?: Array<{
     id: string;
     startDate: string;
@@ -74,6 +81,7 @@ export default function CarsManagement() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
+  const [depotFilter, setDepotFilter] = useState("");
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
 
   // Modal states
@@ -121,7 +129,8 @@ export default function CarsManagement() {
         (car) =>
           car.make.toLowerCase().includes(searchTerm.toLowerCase()) ||
           car.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          car.location.toLowerCase().includes(searchTerm.toLowerCase())
+          car.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (car.depot?.name.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
       );
     }
 
@@ -129,6 +138,13 @@ export default function CarsManagement() {
     if (locationFilter) {
       filtered = filtered.filter((car) =>
         car.location.toLowerCase().includes(locationFilter.toLowerCase())
+      );
+    }
+
+    // Depot filter
+    if (depotFilter) {
+      filtered = filtered.filter((car) =>
+        car.depot?.name.toLowerCase().includes(depotFilter.toLowerCase()) ?? false
       );
     }
 
@@ -140,7 +156,7 @@ export default function CarsManagement() {
     }
 
     setFilteredCars(filtered);
-  }, [cars, searchTerm, locationFilter, availabilityFilter]);
+  }, [cars, searchTerm, locationFilter, depotFilter, availabilityFilter]);
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
@@ -343,14 +359,14 @@ export default function CarsManagement() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div>
                 <Label htmlFor="search">Search</Label>
                 <div className="relative">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
                     id="search"
-                    placeholder="Search by make, model, or location..."
+                    placeholder="Search by make, model, location, or depot..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -374,6 +390,22 @@ export default function CarsManagement() {
                 </select>
               </div>
               <div>
+                <Label htmlFor="depot">Depot</Label>
+                <select
+                  id="depot"
+                  value={depotFilter}
+                  onChange={(e) => setDepotFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Depots</option>
+                  {Array.from(new Set(cars.filter(car => car.depot).map(car => car.depot!.name))).map((depotName) => (
+                    <option key={depotName} value={depotName}>
+                      {depotName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <Label htmlFor="availability">Availability</Label>
                 <select
                   id="availability"
@@ -392,6 +424,7 @@ export default function CarsManagement() {
                   onClick={() => {
                     setSearchTerm("");
                     setLocationFilter("");
+                    setDepotFilter("");
                     setAvailabilityFilter("all");
                   }}
                   className="w-full"
@@ -507,6 +540,9 @@ export default function CarsManagement() {
                         Location
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Depot
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Price/Day
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -547,6 +583,20 @@ export default function CarsManagement() {
                             <MapPin className="w-4 h-4 mr-1 text-gray-400" />
                             {car.location}
                           </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {car.depot ? (
+                            <div className="text-sm text-gray-900">
+                              <div className="font-medium">{car.depot.name}</div>
+                              <div className="text-gray-500">
+                                {car.depot.city}, {car.depot.state}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-400 italic">
+                              No depot assigned
+                            </span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">

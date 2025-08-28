@@ -84,7 +84,20 @@ async function getHandler(req: NextRequest) {
       queryOptions.skip = parseInt(offset);
     }
 
-    const cars = await prisma.car.findMany(queryOptions);
+    const cars = await prisma.car.findMany({
+      ...queryOptions,
+      include: {
+        depot: {
+          select: {
+            id: true,
+            name: true,
+            city: true,
+            state: true,
+            address: true,
+          },
+        },
+      },
+    });
 
     // Parse features from JSON string
     const carsWithFeatures = cars.map((car) => ({

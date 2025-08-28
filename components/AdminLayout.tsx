@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   Activity,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signOut } from "next-auth/react";
@@ -81,6 +82,12 @@ export function AdminLayout({
       href: "/admin/cars",
       icon: Car,
       current: title === "Car Management",
+    },
+    {
+      name: "Depot Management",
+      href: "/admin/depots",
+      icon: Building2,
+      current: title === "Depot Management",
     },
     {
       name: "Bookings",
