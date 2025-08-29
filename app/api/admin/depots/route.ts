@@ -30,8 +30,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check admin permissions
-    const authResult = await authorize(session.user.id, 'admin', 'read');
+    // Check depot read permissions
+    const authResult = await authorize(session.user.id, 'depots', 'read');
     if (!authResult.allowed) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
@@ -139,8 +139,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check admin permissions
-    const authResult = await authorize(session.user.id, 'admin', 'write');
+    // Check depot write permissions
+    const authResult = await authorize(session.user.id, 'depots', 'write');
     if (!authResult.allowed) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }

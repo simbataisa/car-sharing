@@ -128,6 +128,15 @@ const resources = [
       ],
     }),
   },
+  {
+    name: "depots",
+    displayName: "Depots",
+    description: "Depot management and car distribution centers",
+    attributes: JSON.stringify({
+      fields: ["id", "name", "address", "city", "state", "zipCode", "managerId", "isActive"],
+      features: ["car_storage", "maintenance", "transfers", "operating_hours"],
+    }),
+  },
 ];
 
 // Permissions
@@ -251,6 +260,36 @@ const permissions = [
     resource: "admin",
     action: "admin",
   },
+
+  // Depot permissions
+  {
+    name: "depots:read",
+    displayName: "View Depots",
+    description: "View depot information and listings",
+    resource: "depots",
+    action: "read",
+  },
+  {
+    name: "depots:write",
+    displayName: "Manage Depots",
+    description: "Create and update depot information",
+    resource: "depots",
+    action: "write",
+  },
+  {
+    name: "depots:delete",
+    displayName: "Delete Depots",
+    description: "Remove depots from the system",
+    resource: "depots",
+    action: "delete",
+  },
+  {
+    name: "depots:admin",
+    displayName: "Depot Administration",
+    description: "Full depot management including transfers and assignments",
+    resource: "depots",
+    action: "admin",
+  },
 ];
 
 // Roles
@@ -264,6 +303,7 @@ const roles = [
       "users:admin",
       "cars:admin",
       "bookings:admin",
+      "depots:admin",
       "admin:access",
       "admin:settings",
       "admin:reports",
@@ -280,6 +320,7 @@ const roles = [
       "users:write",
       "cars:admin",
       "bookings:admin",
+      "depots:admin",
       "admin:access",
       "admin:reports",
     ],
@@ -294,6 +335,8 @@ const roles = [
       "cars:read",
       "cars:write",
       "bookings:admin",
+      "depots:read",
+      "depots:write",
       "admin:access",
       "admin:reports",
     ],
@@ -309,6 +352,7 @@ const roles = [
       "cars:write",
       "bookings:read",
       "bookings:write",
+      "depots:read",
     ],
   },
   {
@@ -642,6 +686,144 @@ async function seedCars() {
   return cars;
 }
 
+async function seedDepots() {
+  console.log("🏢 Seeding depots...");
+
+  const sampleDepots = [
+    {
+      name: "Downtown San Francisco Depot",
+      address: "123 Market Street",
+      city: "San Francisco",
+      state: "CA",
+      zipCode: "94102",
+      phone: "+1 (415) 555-0101",
+      email: "sf-downtown@carshare.com",
+      capacity: 50,
+      isActive: true,
+      operatingHours: JSON.stringify({
+        monday: { open: "06:00", close: "22:00" },
+        tuesday: { open: "06:00", close: "22:00" },
+        wednesday: { open: "06:00", close: "22:00" },
+        thursday: { open: "06:00", close: "22:00" },
+        friday: { open: "06:00", close: "23:00" },
+        saturday: { open: "07:00", close: "23:00" },
+        sunday: { open: "07:00", close: "21:00" }
+      }),
+    },
+    {
+      name: "Los Angeles Central Hub",
+      address: "456 Wilshire Boulevard",
+      city: "Los Angeles",
+      state: "CA",
+      zipCode: "90010",
+      phone: "+1 (213) 555-0202",
+      email: "la-central@carshare.com",
+      capacity: 75,
+      isActive: true,
+      operatingHours: JSON.stringify({
+        monday: { open: "05:30", close: "22:30" },
+        tuesday: { open: "05:30", close: "22:30" },
+        wednesday: { open: "05:30", close: "22:30" },
+        thursday: { open: "05:30", close: "22:30" },
+        friday: { open: "05:30", close: "23:30" },
+        saturday: { open: "06:30", close: "23:30" },
+        sunday: { open: "06:30", close: "22:00" }
+      }),
+    },
+    {
+      name: "New York Manhattan Depot",
+      address: "789 Broadway",
+      city: "New York",
+      state: "NY",
+      zipCode: "10003",
+      phone: "+1 (212) 555-0303",
+      email: "ny-manhattan@carshare.com",
+      capacity: 60,
+      isActive: true,
+      operatingHours: JSON.stringify({
+        monday: { open: "06:00", close: "22:00" },
+        tuesday: { open: "06:00", close: "22:00" },
+        wednesday: { open: "06:00", close: "22:00" },
+        thursday: { open: "06:00", close: "22:00" },
+        friday: { open: "06:00", close: "23:00" },
+        saturday: { open: "07:00", close: "23:00" },
+        sunday: { open: "08:00", close: "21:00" }
+      }),
+    },
+    {
+      name: "Miami Beach Depot",
+      address: "321 Ocean Drive",
+      city: "Miami Beach",
+      state: "FL",
+      zipCode: "33139",
+      phone: "+1 (305) 555-0404",
+      email: "miami-beach@carshare.com",
+      capacity: 40,
+      isActive: true,
+      operatingHours: JSON.stringify({
+        monday: { open: "07:00", close: "21:00" },
+        tuesday: { open: "07:00", close: "21:00" },
+        wednesday: { open: "07:00", close: "21:00" },
+        thursday: { open: "07:00", close: "21:00" },
+        friday: { open: "07:00", close: "22:00" },
+        saturday: { open: "08:00", close: "22:00" },
+        sunday: { open: "08:00", close: "20:00" }
+      }),
+    },
+    {
+      name: "Seattle Tech District Depot",
+      address: "654 Pine Street",
+      city: "Seattle",
+      state: "WA",
+      zipCode: "98101",
+      phone: "+1 (206) 555-0505",
+      email: "seattle-tech@carshare.com",
+      capacity: 45,
+      isActive: true,
+      operatingHours: JSON.stringify({
+        monday: { open: "06:00", close: "22:00" },
+        tuesday: { open: "06:00", close: "22:00" },
+        wednesday: { open: "06:00", close: "22:00" },
+        thursday: { open: "06:00", close: "22:00" },
+        friday: { open: "06:00", close: "22:00" },
+        saturday: { open: "07:00", close: "21:00" },
+        sunday: { open: "08:00", close: "20:00" }
+      }),
+    },
+    {
+      name: "Austin Downtown Depot",
+      address: "987 Congress Avenue",
+      city: "Austin",
+      state: "TX",
+      zipCode: "78701",
+      phone: "+1 (512) 555-0606",
+      email: "austin-downtown@carshare.com",
+      capacity: 35,
+      isActive: true,
+      operatingHours: JSON.stringify({
+        monday: { open: "06:30", close: "21:30" },
+        tuesday: { open: "06:30", close: "21:30" },
+        wednesday: { open: "06:30", close: "21:30" },
+        thursday: { open: "06:30", close: "21:30" },
+        friday: { open: "06:30", close: "22:30" },
+        saturday: { open: "07:30", close: "22:30" },
+        sunday: { open: "08:00", close: "21:00" }
+      }),
+    },
+  ];
+
+  for (const depotData of sampleDepots) {
+    await prisma.depot.upsert({
+      where: { name: depotData.name },
+      update: {},
+      create: depotData,
+    });
+  }
+
+  const depotCount = await prisma.depot.count();
+  console.log(`   ✅ Created/updated ${depotCount} depots`);
+}
+
 async function main() {
   try {
     console.log("🌱 Starting comprehensive database seed...");
@@ -671,18 +853,23 @@ async function main() {
     await seedCars();
     console.log("");
 
+    // Seed depots
+    await seedDepots();
+    console.log("");
+
     console.log("🎉 Database seeding completed successfully!");
     console.log("🔗 Admin login URL: http://localhost:3000/admin/login");
     console.log("🔗 Cars page URL: http://localhost:3000/cars");
     console.log("");
     console.log("📋 RBAC/ABAC System Summary:");
-    console.log("   • 4 Resources (users, cars, bookings, admin)");
+    console.log("   • 5 Resources (users, cars, bookings, admin, depots)");
     console.log(
-      "   • 16 Permissions (read/write/delete/admin for each resource)"
+      "   • 20 Permissions (read/write/delete/admin for each resource)"
     );
     console.log("   • 5 Roles (SUPER_ADMIN, ADMIN, MANAGER, MODERATOR, USER)");
     console.log("   • 4 ABAC Policy Rules for fine-grained access control");
     console.log("   • Sample users with different roles for testing");
+    console.log("   • Sample depots across major cities");
   } catch (error) {
     console.error("❌ Error during database seeding:", error);
     throw error;

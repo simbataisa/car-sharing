@@ -26,8 +26,8 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check admin permissions
-    const authResult = await authorize(session.user.id, 'admin', 'read');
+    // Check depot read permissions
+    const authResult = await authorize(session.user.id, 'depots', 'read');
     if (!authResult.allowed) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
@@ -134,8 +134,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check admin permissions
-    const authResult = await authorize(session.user.id, 'admin', 'write');
+    // Check depot write permissions
+    const authResult = await authorize(session.user.id, 'depots', 'write');
     if (!authResult.allowed) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
@@ -233,8 +233,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check admin permissions
-    const authResult = await authorize(session.user.id, 'admin', 'write');
+    // Check depot delete permissions
+    const authResult = await authorize(session.user.id, 'depots', 'delete');
     if (!authResult.allowed) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }

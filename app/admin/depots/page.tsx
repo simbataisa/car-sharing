@@ -291,8 +291,8 @@ export default function DepotsPage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Occupancy Rate</p>
-                  <p className={`font-semibold ${getOccupancyColor(depot.occupancyRate)}`}>
-                    {depot.occupancyRate.toFixed(1)}%
+                  <p className={`font-semibold ${getOccupancyColor(depot.occupancyRate || 0)}`}>
+                    {(depot.occupancyRate || 0).toFixed(1)}%
                   </p>
                 </div>
                 <div>

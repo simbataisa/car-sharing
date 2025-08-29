@@ -243,7 +243,7 @@ export async function authorize(
     if (hasWildcardResource || hasWildcardAction || hasFullWildcard) {
       return { allowed: true };
     }
-    
+    console.log("Permissions:", permissions);
     // Check for admin permissions (legacy support)
     const hasAdminPermission = permissions.some(p => p.name === "admin:*" || p.name === "admin:admin");
     if (hasAdminPermission && (resource === "admin" || action === "admin")) {
